@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  bot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: dsa-bot
+    environment:
+      - DSA_EMAIL=${DSA_EMAIL}
+      - DSA_PASSWORD=${DSA_PASSWORD}
+      - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      - LLM_MODEL=${LLM_MODEL:-llama3.1}
+      - OLLAMA_API_KEYS=${OLLAMA_API_KEYS}
+      - HEADLESS=${HEADLESS:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ../logs:/app/logs
+      - ../data:/app/data
+    shm_size: 2gb
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dsa-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
