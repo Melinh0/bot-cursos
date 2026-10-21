@@ -1,9 +1,9 @@
-# DataScienceAcademy Bot
+# Bot Cursos
 
 Automated bot for completing DataScienceAcademy courses with LLM-powered quiz and activity solving.
 
 ## Architecture
-
+...
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        main.py                                  │
@@ -46,7 +46,7 @@ Automated bot for completing DataScienceAcademy courses with LLM-powered quiz an
 
 ```bash
 # Clone and setup
-cd DataScienceAcademy
+cd Bot Cursos
 uv venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 uv pip install -e .
@@ -99,7 +99,7 @@ Keys are loaded from `OLLAMA_API_KEYS` environment variable (comma-separated).
 ## Project Structure
 
 ```
-DataScienceAcademy/
+Bot Cursos/
 ├── src/
 │   ├── config/          # Pydantic settings
 │   ├── bot/             # Selenium automation
