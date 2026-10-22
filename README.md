@@ -6,35 +6,36 @@ LLM-powered quiz and activity solving.
 ## Architecture
 
 ```
-main.py                       entry point: login → select course → unit loop → exit code
+main.py                           entry point: login → select course → unit loop → exit code
   │
   ▼
-src/bot                       Selenium automation
-  ├── browser.py                undetected ChromeDriver + restart
-  ├── login.py                  login, session check, re-login
-  ├── navigator.py              unit loop: video, quiz, activity, next
-  ├── recovery.py               escalating recovery (reload → re-login → restart)
-  ├── scanner.py                page scan, CSS selector suggestions
-  └── selectors.py              selector memory (learned selectors)
+src/bot                           Selenium automation
+  ├── browser.py                  undetected ChromeDriver + restart
+  ├── login.py                    login, session check, re-login
+  ├── navigator.py                unit loop: video, quiz, activity, next
+  ├── recovery.py                 escalating recovery (reload → re-login → restart)
+  ├── scanner.py                  page scan, CSS selector suggestions
+  └── selectors.py                selector memory (learned selectors)
   │
   ▼
-src/courses                   course domain
-  ├── discovery.py              enrolled course with lowest progress
-  ├── course_map.py             unit map with pending/done/skipped
-  ├── tracker.py                progress stats
-  └── parser.py                 HTML content extraction
-  │
-  ├──▶ src/llm                 quiz/activity solving
-  │      ├── client.py            OpenAI-compatible client, key/model rotation
-  │      ├── solver.py            LLM solving + heuristic fallback
-  │      └── prompts.py           prompt templates
+src/courses                       course domain
+  ├── discovery.py                enrolled course with lowest progress
+  ├── course_map.py               unit map with pending/done/skipped
+  ├── tracker.py                  progress stats
+  └── parser.py                   HTML content extraction
   │
   ▼
-data/                         persistent state (gitignored)
-  ├── courses.json               unit map per course
-  ├── progress.json              progress counters
-  ├── selector_memory.json       learned selectors
-  └── runs/<timestamp>.jsonl     one JSON event per step
+src/llm                           quiz/activity solving
+  ├── client.py                   OpenAI-compatible client, key/model rotation
+  ├── solver.py                   LLM solving + heuristic fallback
+  └── prompts.py                  prompt templates
+  │
+  ▼
+data/                             persistent state (gitignored)
+  ├── courses.json                unit map per course
+  ├── progress.json               progress counters
+  ├── selector_memory.json        learned selectors
+  └── runs/<timestamp>.jsonl      one JSON event per step
 ```
 
 Cross-cutting: `src/config` (pydantic settings from `.env`) and `src/utils`
