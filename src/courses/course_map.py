@@ -154,7 +154,6 @@ class CourseMap:
         return resolved
 
     def build_from_driver(self, driver: WebDriver, course_id: str, title: str = "") -> dict:
-
         entry = self.course(course_id)
         if title:
             entry["title"] = title
@@ -266,7 +265,6 @@ class CourseMap:
         return all(u["status"] != STATUS_PENDING for u in units)
 
     def counts(self, course_id: str) -> tuple[int, int]:
-
         units = self.units(course_id)
         total = len(units)
         resolved = sum(1 for u in units if u["status"] != STATUS_PENDING)

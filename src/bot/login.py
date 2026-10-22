@@ -151,7 +151,6 @@ class LoginHandler:
         return True
 
     def login(self) -> bool:
-
         self.last_error = ""
 
         try:

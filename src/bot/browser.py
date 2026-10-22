@@ -48,7 +48,6 @@ class BrowserManager:
         return self.driver
 
     def restart(self) -> WebDriver:
-
         logger.warning("Restarting the browser")
         self.quit()
         return self.create_driver()

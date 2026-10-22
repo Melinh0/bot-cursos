@@ -31,7 +31,6 @@ def make_navigator(driver, tmp_path):
 
 
 def test_session_lost_false_positives_are_gone(tmp_path):
-
     driver = FakeDriver(hidden={"signin-email": [1], ".login-form": [1]})
     navigator = make_navigator(driver, tmp_path)
     assert navigator._session_lost() is False
@@ -44,7 +43,6 @@ def test_session_lost_when_form_is_really_visible(tmp_path):
 
 
 def test_session_lost_false_when_logged_in_marker_visible(tmp_path):
-
     driver = FakeDriver(
         visible={
             "signin-email": [FakeElement()],

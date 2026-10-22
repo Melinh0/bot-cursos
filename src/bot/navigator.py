@@ -75,7 +75,6 @@ class CourseNavigator:
             self.run_log.event(kind, **fields)
 
     def scan_page(self, label: str) -> dict:
-
         if self.scanner is None:
             return {}
         try:
@@ -161,7 +160,6 @@ class CourseNavigator:
             return False
 
     def build_course_map(self, course_url: str, title: str = "") -> str:
-
         course_id = extract_course_id(course_url) or extract_course_id(self.driver.current_url)
         if not course_id or self.course_map is None:
             return course_id
@@ -169,7 +167,6 @@ class CourseNavigator:
         return course_id
 
     def _enter_course_player(self) -> bool:
-
         try:
             clicked = self.driver.execute_script(
                 """
@@ -538,7 +535,6 @@ class CourseNavigator:
             return False
 
     def _handle_stuck(self, course_url: str) -> bool:
-
         self.stuck_count += 1
         logger.warning(f"Stuck on unit '{self.current_unit}' ({self.stuck_count}x)")
         self._log_event("stuck", unit=self.current_unit, count=self.stuck_count)
@@ -571,7 +567,6 @@ class CourseNavigator:
         return _do_relogin
 
     def _restart_action(self):
-
         def _do_restart() -> bool:
             if self.restart_browser is None:
                 logger.error("No browser restart handler configured")
@@ -638,7 +633,6 @@ class CourseNavigator:
             return False
 
     def _handle_video(self) -> None:
-
         try:
             videos = self.driver.find_elements(By.CSS_SELECTOR, "video")
         except Exception:
@@ -917,7 +911,6 @@ class CourseNavigator:
         return summary
 
     def _heuristic_answer(self, quiz_data: dict) -> int:
-
         options = quiz_data.get("options", [])
         if not options:
             return None

@@ -234,7 +234,6 @@ def js_click_first(driver, css_selectors) -> str:
 
 
 def js_click(driver: WebDriver, element) -> bool:
-
     try:
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
         driver.execute_script("arguments[0].click();", element)
@@ -245,7 +244,6 @@ def js_click(driver: WebDriver, element) -> bool:
 
 
 def click_element(driver: WebDriver, element, use_js_fallback: bool = True) -> bool:
-
     if safe_click(driver, element):
         return True
     if use_js_fallback:

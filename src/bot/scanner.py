@@ -58,7 +58,6 @@ class PageScanner:
         return "other"
 
     def scan(self, driver: WebDriver, label: str = "") -> dict:
-
         try:
             html = driver.page_source or ""
         except Exception as e:
@@ -165,7 +164,6 @@ class PageScanner:
         return links
 
     def find_entry_points(self, report: dict, keywords: tuple[str, ...] = ()) -> list[dict]:
-
         candidates = [
             link for link in report.get("dom_links", []) if link["category"] in ("player", "unit")
         ]
@@ -196,7 +194,6 @@ class PageScanner:
         return points[0]["href"] if points else None
 
     def suggest_css(self, report: dict, tokens: tuple[str, ...], limit: int = 3) -> list[str]:
-
         if not report:
             return []
 
@@ -216,7 +213,6 @@ class PageScanner:
         return suggestions[:limit]
 
     def get_navigation_urls(self, report: dict) -> list[dict]:
-
         nav_keywords = (
             "cursosgratuitos",
             "cursos-gratuitos",
@@ -243,7 +239,6 @@ class PageScanner:
         return nav_links
 
     def get_course_cards(self, report: dict) -> list[dict]:
-
         course_links = []
         for link in report.get("dom_links", []):
             href = link.get("href", "")
@@ -252,7 +247,6 @@ class PageScanner:
         return course_links
 
     def get_enroll_buttons(self, report: dict) -> list[dict]:
-
         enroll_texts = (
             "inscrever",
             "matricular",

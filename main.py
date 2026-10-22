@@ -34,7 +34,6 @@ EXPLORATION_URLS = (
 
 
 def explore_site(driver, scanner: PageScanner) -> None:
-
     logger.info("Starting site exploration to discover and enroll in courses...")
 
     for url in EXPLORATION_URLS[:2]:
@@ -65,7 +64,6 @@ def explore_site(driver, scanner: PageScanner) -> None:
 
 
 def choose_course_url(driver, scanner: PageScanner, report: dict) -> str:
-
     scanned = scanner.find_entry_points(report, keywords=COURSE_KEYWORDS)
     for link in scanned:
         href = link.get("href", "")

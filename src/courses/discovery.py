@@ -21,7 +21,6 @@ def player_url(course_slug: str) -> str:
 
 
 def select_lowest_progress(courses: list[dict]) -> dict | None:
-
     candidates = [c for c in courses if (c.get("progress") or 0) < 100]
     if not candidates:
         return None
@@ -36,7 +35,6 @@ class CourseDiscovery:
         self.driver = driver
 
     def discover_enrolled(self) -> list[dict]:
-
         logger.info("Discovering enrolled courses")
         try:
             self.driver.get(self.START_URL)
@@ -89,7 +87,6 @@ class CourseDiscovery:
         return result
 
     def discover_courses(self) -> list[dict]:
-
         logger.info("Discovering available courses via dashboard")
         self.driver.get(self.DASHBOARD_URL)
         random_delay(2, 3)
