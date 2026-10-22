@@ -4,6 +4,7 @@ from src.courses.course_map import (
     STATUS_SKIPPED,
     CourseMap,
     extract_course_id,
+    reconcile_outline,
 )
 
 
@@ -86,3 +87,65 @@ def test_empty_course_is_not_complete(tmp_path):
     course_map = CourseMap(str(tmp_path / "courses.json"))
     assert not course_map.is_complete("missing-course")
     assert course_map.next_pending("missing-course") is None
+
+
+def test_reconcile_outline_bidirectional():
+    units = [
+        {"id": "u1", "status": STATUS_DONE},
+        {"id": "u2", "status": STATUS_PENDING},
+        {"id": "u3", "status": STATUS_DONE},
+    ]
+    outline = [
+        {"index": 0, "done": True},
+        {"index": 1, "done": True},
+        {"index": 2, "done": False},
+    ]
+    to_done, to_pending = reconcile_outline(units, outline)
+    assert to_done == ["u2"]
+    assert to_pending == ["u3"]
+
+
+def test_reconcile_outline_matching_state():
+    units = [{"id": "u1", "status": STATUS_DONE}, {"id": "u2", "status": STATUS_PENDING}]
+    outline = [{"index": 0, "done": True}, {"index": 1, "done": False}]
+    assert reconcile_outline(units, outline) == ([], [])
+
+
+def test_reconcile_outline_rejects_mismatched_lengths():
+    units = [{"id": "u1", "status": STATUS_PENDING}]
+    outline = [{"index": 0, "done": True}, {"index": 1, "done": True}]
+    assert reconcile_outline(units, outline) == ([], [])
+    assert reconcile_outline(units, []) == ([], [])
+
+
+def test_sync_from_outline_applies_and_persists(tmp_path):
+    storage = str(tmp_path / "courses.json")
+    course_map = CourseMap(storage)
+    driver = FakeDriver(
+        [
+            FakeLink("https://x/path-player?courseid=c1&unit=u1"),
+            FakeLink("https://x/path-player?courseid=c1&unit=u2"),
+            FakeLink("https://x/path-player?courseid=c1&unit=u3"),
+        ]
+    )
+    course_map.build_from_driver(driver, "c1")
+    course_map.mark_done("c1", "u1")
+    course_map.mark_done("c1", "u3")
+
+    outline = [
+        {"index": 0, "done": True},
+        {"index": 1, "done": True},
+        {"index": 2, "done": False},
+    ]
+    stats = course_map.sync_from_outline("c1", outline)
+    assert stats == {"marked_done": 1, "reverted_pending": 1}
+
+    statuses = [u["status"] for u in course_map.units("c1")]
+    assert statuses == [STATUS_DONE, STATUS_DONE, STATUS_PENDING]
+
+    reloaded = CourseMap(storage)
+    assert [u["status"] for u in reloaded.units("c1")] == [
+        STATUS_DONE,
+        STATUS_DONE,
+        STATUS_PENDING,
+    ]

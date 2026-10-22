@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     implicit_wait: int = Field(default=0, alias="IMPLICIT_WAIT")
     window_size: str = Field(default="1920,1080", alias="WINDOW_SIZE")
     browser_half_screen: bool = Field(default=True, alias="BROWSER_HALF_SCREEN")
+    browser_persistent_profile: bool = Field(default=True, alias="BROWSER_PERSISTENT_PROFILE")
+    browser_profile_dir: str = Field(default="data/browser_profile", alias="BROWSER_PROFILE_DIR")
 
     max_run_attempts: int = Field(default=3, alias="MAX_RUN_ATTEMPTS")
     max_units_per_run: int = Field(default=0, alias="MAX_UNITS_PER_RUN")

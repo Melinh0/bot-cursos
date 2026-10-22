@@ -122,11 +122,13 @@ Variáveis principais (veja `.env.example` para a lista completa):
 | `OLLAMA_API_KEYS` | API keys (separadas por vírgula, com rotação) | — |
 | `HEADLESS` | Rodar navegador sem interface | `false` |
 | `BROWSER_HALF_SCREEN` | Navegador em meia tela | `true` |
+| `BROWSER_PERSISTENT_PROFILE` | Perfil Chrome persistente (sessão logada entre execuções) | `true` |
+| `BROWSER_PROFILE_DIR` | Diretório do perfil persistente | `data/browser_profile` |
 | `AUTO_DISCOVER_COURSES` | Selecionar automaticamente o curso | `true` |
 | `MAX_UNITS_PER_RUN` | Limite de unidades (0 = ilimitado) | `0` |
 | `MAX_RUN_ATTEMPTS` | Tentativas por execução | `3` |
 | `UNIT_TIMEOUT_SECONDS` | Watchdog por unidade | `180` |
-| `UNIT_MIN_DWELL_SECONDS` | Tempo mínimo de permanência no unit antes do Next (a plataforma só marca `completed:true` com ~10s+ de tempo ativo) | `15` |
+| `UNIT_MIN_DWELL_SECONDS` | Piso de permanência no unit antes do Next (o bot também lê as regras de conclusão da plataforma no runtime e usa o maior valor) | `15` |
 | `UNIT_ACTIVITY_FLUSH_SECONDS` | Espera após o Next para o POST `update-path-player-activity` ser enviado | `10` |
 | `SMOKE_MODE` | Processar no máximo 1 unidade | `false` |
 | `LOG_LEVEL` | Nível de logging | `INFO` |

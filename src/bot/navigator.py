@@ -41,6 +41,39 @@ COMPLETION_INDICATORS = (
     "congratulations",
 )
 
+JS_PLATFORM_OUTLINE = """
+const lis = document.querySelectorAll('li.lrn-path-cont');
+const out = [];
+lis.forEach(li => {
+    const circle = li.querySelector('.lrn-path-completion-circle');
+    const main = li.querySelector('[aria-label]') || li.querySelector('.lrn-path-cont-main');
+    const label = main ? (main.getAttribute('aria-label') || '') : '';
+    const done = (circle && circle.classList.contains('completed')) ||
+                 /,\\s*completed\\s*$/i.test(label);
+    out.push({
+        index: out.length,
+        done: !!done,
+        selected: li.classList.contains('lrn-path-con-selected')
+    });
+});
+return out;
+"""
+
+JS_COMPLETION_RULES = """
+try {
+    const st = window.coursePlayerVue && window.coursePlayerVue.$store
+        && window.coursePlayerVue.$store.state;
+    const uc = st && st.courseData && st.courseData.unitCompletion;
+    if (!uc) { return 0; }
+    const vals = [Number(uc.globalLoadTime) || 0, Number(uc.timeAfterLoad) || 0];
+    const cv = uc.customizedValues || {};
+    ['ebooks', 'video', 'timeAfterLoad'].forEach(k => {
+        if (cv[k]) { vals.push(Number(cv[k]) || 0); }
+    });
+    return Math.max.apply(null, vals.filter(n => n > 0));
+} catch (e) { return 0; }
+"""
+
 
 class CourseNavigator:
     def __init__(
@@ -70,6 +103,8 @@ class CourseNavigator:
         self.consecutive_errors = 0
         self.wrong_page_count = 0
         self.unit_opened_at = 0.0
+        self._synced_courses: set[str] = set()
+        self._dwell_floor = 0
 
     def _log_event(self, kind: str, **fields) -> None:
         if self.run_log is not None:
@@ -671,11 +706,66 @@ class CourseNavigator:
                 logger.debug(f"Video handling failed: {e}")
                 return
 
+    def sync_platform_state(self, course_id: str) -> bool:
+        if not (course_id and self.course_map is not None):
+            return False
+        units = self.course_map.units(course_id)
+        if not units:
+            return False
+        try:
+            outline = self.driver.execute_script(JS_PLATFORM_OUTLINE) or []
+        except Exception as e:
+            logger.warning(f"Platform outline scan failed: {e}")
+            return False
+        if not outline or len(outline) != len(units):
+            logger.warning(
+                f"Outline mismatch (platform={len(outline)}, map={len(units)}), skipping sync"
+            )
+            return False
+        selected = [row for row in outline if row.get("selected")]
+        current = self.get_current_unit().removesuffix("Unit")
+        if len(selected) != 1:
+            logger.warning("Could not identify the selected unit in the outline, skipping sync")
+            return False
+        index = selected[0]["index"]
+        mapped = units[index]["id"].removesuffix("Unit") if index < len(units) else ""
+        if not (mapped and current and mapped == current):
+            logger.warning("Outline order does not match the unit map, skipping sync")
+            return False
+        stats = self.course_map.sync_from_outline(course_id, outline)
+        self._synced_courses.add(course_id)
+        if stats["marked_done"] or stats["reverted_pending"]:
+            logger.info(
+                f"Platform sync: {stats['marked_done']} units confirmed done, "
+                f"{stats['reverted_pending']} reverted to pending"
+            )
+            self._log_event(
+                "platform_sync",
+                marked_done=stats["marked_done"],
+                reverted=stats["reverted_pending"],
+            )
+        else:
+            logger.info("Platform sync: local map already matches the platform")
+        return True
+
+    def _platform_dwell_floor(self) -> int:
+        if self._dwell_floor:
+            return self._dwell_floor
+        try:
+            seconds = self.driver.execute_script(JS_COMPLETION_RULES)
+            self._dwell_floor = int(seconds) if seconds else 0
+        except Exception:
+            self._dwell_floor = 0
+        if self._dwell_floor:
+            logger.info(f"Platform completion rules require up to {self._dwell_floor}s per unit")
+        return self._dwell_floor
+
     def _wait_unit_dwell(self, unit: str) -> None:
-        if not settings.unit_min_dwell_seconds:
+        required = max(settings.unit_min_dwell_seconds, self._platform_dwell_floor())
+        if not required:
             return
         opened = self.unit_opened_at or time.time()
-        remaining = settings.unit_min_dwell_seconds - (time.time() - opened)
+        remaining = required - (time.time() - opened)
         if remaining <= 0:
             return
         logger.info(f"Holding unit '{unit}' for {remaining:.1f}s before Next (platform dwell)")
@@ -748,6 +838,9 @@ class CourseNavigator:
                 logger.warning("Could not enter player from landing page, continuing anyway")
 
         unit_deadline = time.time() + settings.unit_timeout_seconds
+
+        if course_id and course_id not in self._synced_courses:
+            self.sync_platform_state(course_id)
 
         while True:
             if not self._driver_alive():

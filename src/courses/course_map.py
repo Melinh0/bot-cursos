@@ -25,6 +25,21 @@ def extract_course_id(url: str) -> str:
     return match.group(1) if match else ""
 
 
+def reconcile_outline(units: list[dict], outline: list[dict]) -> tuple[list[str], list[str]]:
+    if not outline or len(outline) != len(units):
+        return [], []
+    to_done: list[str] = []
+    to_pending: list[str] = []
+    for unit, row in zip(units, outline):
+        platform_done = bool(row.get("done"))
+        local_done = unit.get("status") == STATUS_DONE
+        if platform_done and not local_done:
+            to_done.append(unit["id"])
+        elif not platform_done and local_done:
+            to_pending.append(unit["id"])
+    return to_done, to_pending
+
+
 class CourseMap:
     def __init__(self, storage_path: str = "data/courses.json"):
         self.storage_path = Path(storage_path)
@@ -251,6 +266,31 @@ class CourseMap:
                 self.save()
                 logger.warning(f"Unit marked skipped: {unit_id}")
                 return
+
+    def mark_pending(self, course_id: str, unit_id: str) -> None:
+        for unit in self.units(course_id):
+            if unit["id"] == unit_id and unit["status"] != STATUS_PENDING:
+                unit["status"] = STATUS_PENDING
+                self.save()
+                logger.info(f"Unit reverted to pending: {unit_id}")
+                return
+
+    def sync_from_outline(self, course_id: str, outline: list[dict]) -> dict:
+        units = self.units(course_id)
+        to_done, to_pending = reconcile_outline(units, outline)
+        done_set = set(to_done)
+        pending_set = set(to_pending)
+        changed = False
+        for unit in units:
+            if unit["id"] in done_set and unit["status"] != STATUS_DONE:
+                unit["status"] = STATUS_DONE
+                changed = True
+            elif unit["id"] in pending_set and unit["status"] != STATUS_PENDING:
+                unit["status"] = STATUS_PENDING
+                changed = True
+        if changed:
+            self.save()
+        return {"marked_done": len(to_done), "reverted_pending": len(to_pending)}
 
     def next_pending(self, course_id: str) -> dict | None:
         for unit in self.units(course_id):

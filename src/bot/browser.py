@@ -1,3 +1,6 @@
+import shutil
+from pathlib import Path
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -74,6 +77,9 @@ class BrowserManager:
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
 
+        if settings.browser_persistent_profile:
+            options.add_argument(f"--user-data-dir={self._prepare_profile_dir()}")
+
         self.driver = webdriver.Chrome(options=options)
 
         try:
@@ -91,6 +97,21 @@ class BrowserManager:
 
         logger.info("Browser initialized successfully")
         return self.driver
+
+    def _prepare_profile_dir(self) -> str:
+        profile = Path(settings.browser_profile_dir)
+        profile.mkdir(parents=True, exist_ok=True)
+        for name in ("SingletonLock", "SingletonSocket", "SingletonCookie"):
+            leftover = profile / name
+            if leftover.exists() or leftover.is_symlink():
+                try:
+                    leftover.unlink()
+                except OSError:
+                    pass
+        lock_dir = profile / "lockfile"
+        if lock_dir.exists():
+            shutil.rmtree(lock_dir, ignore_errors=True)
+        return str(profile.resolve())
 
     def _apply_window_layout(self) -> None:
         try:
