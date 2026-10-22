@@ -48,21 +48,27 @@ class CourseParser:
 
     def get_unit_content(self) -> str:
         try:
-            content_elem = self.driver.find_element(By.CSS_SELECTOR, ".course-player-content, .lesson-content, .unit-content")
+            content_elem = self.driver.find_element(
+                By.CSS_SELECTOR, ".course-player-content, .lesson-content, .unit-content"
+            )
             return content_elem.text.strip()[:5000]
         except Exception:
             return ""
 
     def has_quiz(self) -> bool:
         try:
-            self.driver.find_element(By.CSS_SELECTOR, ".quiz-container, .quiz-question, [data-quiz]")
+            self.driver.find_element(
+                By.CSS_SELECTOR, ".quiz-container, .quiz-question, [data-quiz]"
+            )
             return True
         except Exception:
             return False
 
     def has_activity(self) -> bool:
         try:
-            self.driver.find_element(By.CSS_SELECTOR, ".activity-container, .exercise-container, [data-activity]")
+            self.driver.find_element(
+                By.CSS_SELECTOR, ".activity-container, .exercise-container, [data-activity]"
+            )
             return True
         except Exception:
             return False
@@ -71,7 +77,9 @@ class CourseParser:
         try:
             container = self.driver.find_element(By.CSS_SELECTOR, ".quiz-container")
             question = container.find_element(By.CSS_SELECTOR, ".quiz-question").text.strip()
-            options = [opt.text.strip() for opt in container.find_elements(By.CSS_SELECTOR, ".quiz-option")]
+            options = [
+                opt.text.strip() for opt in container.find_elements(By.CSS_SELECTOR, ".quiz-option")
+            ]
             return {"question": question, "options": options, "container": container}
         except Exception:
             return None
@@ -79,7 +87,9 @@ class CourseParser:
     def extract_activity_details(self) -> dict | None:
         try:
             container = self.driver.find_element(By.CSS_SELECTOR, ".activity-container")
-            prompt = container.find_element(By.CSS_SELECTOR, ".activity-prompt, .exercise-prompt").text.strip()
+            prompt = container.find_element(
+                By.CSS_SELECTOR, ".activity-prompt, .exercise-prompt"
+            ).text.strip()
             return {"prompt": prompt, "container": container}
         except Exception:
             return None

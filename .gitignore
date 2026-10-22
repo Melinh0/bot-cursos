@@ -62,3 +62,6 @@ data/
 
 # Selenium
 *.crdownload
+
+# Agent notes
+AGENTS.md

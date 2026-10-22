@@ -1,4 +1,4 @@
-import undetected_chromedriver as uc
+from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -17,17 +17,24 @@ class BrowserManager:
 
         if settings.headless:
             options.add_argument("--headless=new")
+        options.add_argument(f"--window-size={settings.window_size}")
         options.add_argument("--start-maximized")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--disable-software-rasterizer")
         options.add_argument("--log-level=3")
+        options.add_argument("--lang=pt-BR")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
 
-        self.driver = uc.Chrome(
-            options=options,
-            version_main=None,
-        )
+        self.driver = webdriver.Chrome(options=options)
+
+        try:
+            self.driver.set_window_size(*settings.window_size_list)
+        except Exception as e:
+            logger.warning(f"Could not set the window size: {e}")
 
         self.driver.implicitly_wait(settings.implicit_wait)
         self.driver.set_page_load_timeout(settings.browser_timeout)
@@ -39,6 +46,12 @@ class BrowserManager:
         if self.driver is None:
             return self.create_driver()
         return self.driver
+
+    def restart(self) -> WebDriver:
+
+        logger.warning("Restarting the browser")
+        self.quit()
+        return self.create_driver()
 
     def quit(self) -> None:
         if self.driver:

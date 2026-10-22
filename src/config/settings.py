@@ -17,12 +17,25 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="llama3.1", alias="LLM_MODEL")
     llm_temperature: float = Field(default=0.1, alias="LLM_TEMPERATURE")
     llm_max_tokens: int = Field(default=2048, alias="LLM_MAX_TOKENS")
+    llm_timeout: int = Field(default=120, alias="LLM_TIMEOUT")
+    llm_fallback_models: str = Field(default="", alias="LLM_FALLBACK_MODELS")
 
     ollama_api_keys: str = Field(default="", alias="OLLAMA_API_KEYS")
 
     headless: bool = Field(default=False, alias="HEADLESS")
     browser_timeout: int = Field(default=30, alias="BROWSER_TIMEOUT")
-    implicit_wait: int = Field(default=10, alias="IMPLICIT_WAIT")
+    implicit_wait: int = Field(default=0, alias="IMPLICIT_WAIT")
+    window_size: str = Field(default="1920,1080", alias="WINDOW_SIZE")
+
+    max_run_attempts: int = Field(default=3, alias="MAX_RUN_ATTEMPTS")
+    max_units_per_run: int = Field(default=0, alias="MAX_UNITS_PER_RUN")
+    max_recovery_rounds: int = Field(default=3, alias="MAX_RECOVERY_ROUNDS")
+
+    humanize_delay_min: float = Field(default=0.4, alias="HUMANIZE_DELAY_MIN")
+    humanize_delay_max: float = Field(default=1.2, alias="HUMANIZE_DELAY_MAX")
+    unit_timeout_seconds: int = Field(default=180, alias="UNIT_TIMEOUT_SECONDS")
+    max_stuck_attempts: int = Field(default=3, alias="MAX_STUCK_ATTEMPTS")
+    smoke_mode: bool = Field(default=False, alias="SMOKE_MODE")
 
     target_course_url: str = Field(
         default="https://www.datascienceacademy.com.br/path-player?courseid=fundamentos-de-linguagem-python-para-analise-de-dados-e-data-science&unit=63aa11114343420e8702d3c7Unit",
@@ -41,6 +54,20 @@ class Settings(BaseSettings):
         if not self.ollama_api_keys:
             return []
         return [key.strip() for key in self.ollama_api_keys.split(",") if key.strip()]
+
+    @property
+    def llm_fallback_models_list(self) -> list[str]:
+        if not self.llm_fallback_models:
+            return []
+        return [model.strip() for model in self.llm_fallback_models.split(",") if model.strip()]
+
+    @property
+    def window_size_list(self) -> list[int]:
+        try:
+            width, height = self.window_size.lower().split("x")
+            return [int(width), int(height)]
+        except Exception:
+            return [1920, 1080]
 
 
 settings = Settings()

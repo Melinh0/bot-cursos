@@ -24,8 +24,23 @@ class ProgressTracker:
             "courses": {},
             "quizzes_solved": 0,
             "activities_completed": 0,
+            "history": [],
             "last_updated": None,
         }
+
+    @property
+    def history(self) -> list:
+        return self.progress.setdefault("history", [])
+
+    def record_event(self, kind: str, unit: str = "", detail: str = "") -> None:
+        self.history.append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "kind": kind,
+                "unit": unit,
+                "detail": detail,
+            }
+        )
 
     def save_progress(self) -> None:
         self.progress["last_updated"] = datetime.now().isoformat()
@@ -46,23 +61,28 @@ class ProgressTracker:
 
         if completed:
             self.progress["courses"][course_url]["completed_units"] = len(
-                [u for u in self.progress["courses"][course_url]["units"].values() if u["completed"]]
+                [
+                    u
+                    for u in self.progress["courses"][course_url]["units"].values()
+                    if u["completed"]
+                ]
             )
+            self.record_event("unit_completed", unit=unit)
 
         self.save_progress()
 
-    def increment_quiz_count(self) -> None:
+    def increment_quiz_count(self, unit: str = "", detail: str = "") -> None:
         self.progress["quizzes_solved"] += 1
+        self.record_event("quiz_solved", unit=unit, detail=detail)
         self.save_progress()
 
-    def increment_activity_count(self) -> None:
+    def increment_activity_count(self, unit: str = "", detail: str = "") -> None:
         self.progress["activities_completed"] += 1
+        self.record_event("activity_completed", unit=unit, detail=detail)
         self.save_progress()
 
     def get_stats(self) -> dict:
-        total_units = sum(
-            len(course["units"]) for course in self.progress["courses"].values()
-        )
+        total_units = sum(len(course["units"]) for course in self.progress["courses"].values())
         completed_units = sum(
             course["completed_units"] for course in self.progress["courses"].values()
         )

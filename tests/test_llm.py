@@ -1,20 +1,20 @@
-import os
-import pytest
 from unittest.mock import Mock, patch
+
+from src.config.settings import settings
 from src.llm.client import LLMClient
 from src.llm.solver import QuizSolver
 
 
 def test_llm_client_initialization():
-    with patch("src.llm.client.OpenAI") as mock_openai:
-        with patch.dict("os.environ", {"OLLAMA_API_KEYS": "key1,key2,key3"}):
+    with patch("src.llm.client.OpenAI"):
+        with patch.object(settings, "ollama_api_keys", "key1,key2,key3"):
             client = LLMClient()
             assert client.api_keys == ["key1", "key2", "key3"]
 
 
 def test_key_rotation():
-    with patch("src.llm.client.OpenAI") as mock_openai:
-        with patch.dict("os.environ", {"OLLAMA_API_KEYS": "key1,key2,key3"}):
+    with patch("src.llm.client.OpenAI"):
+        with patch.object(settings, "ollama_api_keys", "key1,key2,key3"):
             client = LLMClient()
             initial_index = client.current_key_index
             client._rotate_key()
@@ -28,10 +28,7 @@ def test_quiz_solver():
         mock_client_class.return_value = mock_client
 
         solver = QuizSolver()
-        result = solver.solve_quiz({
-            "question": "What is 2+2?",
-            "options": ["3", "4", "5", "6"]
-        })
+        result = solver.solve_quiz({"question": "What is 2+2?", "options": ["3", "4", "5", "6"]})
         assert result == 1
 
 
@@ -42,7 +39,5 @@ def test_activity_solver():
         mock_client_class.return_value = mock_client
 
         solver = QuizSolver()
-        result = solver.solve_activity({
-            "prompt": "Write a hello world program"
-        })
+        result = solver.solve_activity({"prompt": "Write a hello world program"})
         assert result == "print('Hello World')"

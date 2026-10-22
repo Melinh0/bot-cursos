@@ -9,31 +9,46 @@ logger = get_logger(__name__)
 
 class LLMClient:
     def __init__(self):
-        self.api_keys = settings.api_keys_list
+        self.api_keys = settings.api_keys_list or ["ollama"]
         self.current_key_index = 0
+        self.models = self._build_model_list()
+        self.current_model_index = 0
         self.client = None
         self._initialize_client()
 
-    def _initialize_client(self) -> None:
-        if not self.api_keys:
-            logger.warning("No API keys configured")
-            return
+    def _build_model_list(self) -> list[str]:
+        models = [settings.llm_model]
+        for extra in settings.llm_fallback_models_list:
+            if extra and extra not in models:
+                models.append(extra)
+        return models
 
-        self.client = OpenAI(
-            base_url=settings.llm_base_url,
-            api_key=self.api_keys[self.current_key_index],
-        )
+    def _initialize_client(self) -> None:
+        try:
+            self.client = OpenAI(
+                base_url=settings.llm_base_url,
+                api_key=self.api_keys[self.current_key_index],
+                timeout=settings.llm_timeout,
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize the LLM client: {e}")
+            self.client = None
 
     def _rotate_key(self) -> bool:
         if len(self.api_keys) <= 1:
             return False
 
         self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
-        self.client = OpenAI(
-            base_url=settings.llm_base_url,
-            api_key=self.api_keys[self.current_key_index],
-        )
+        self._initialize_client()
         logger.info(f"Rotated to API key index {self.current_key_index}")
+        return True
+
+    def _rotate_model(self) -> bool:
+        if len(self.models) <= 1:
+            return False
+
+        self.current_model_index = (self.current_model_index + 1) % len(self.models)
+        logger.info(f"Switched to fallback model: {self.models[self.current_model_index]}")
         return True
 
     def chat_completion(
@@ -42,46 +57,47 @@ class LLMClient:
         temperature: float = None,
         max_tokens: int = None,
     ) -> str | None:
-        if not self.client:
+        if self.client is None:
             logger.error("LLM client not initialized")
             return None
 
         temp = temperature if temperature is not None else settings.llm_temperature
         max_tok = max_tokens if max_tokens is not None else settings.llm_max_tokens
+        model = self.models[self.current_model_index]
 
         def _make_request():
             response = self.client.chat.completions.create(
-                model=settings.llm_model,
+                model=model,
                 messages=messages,
                 temperature=temp,
                 max_tokens=max_tok,
             )
             return response.choices[0].message.content
 
-        max_key_retries = len(self.api_keys)
-        for key_attempt in range(max_key_retries):
+        attempts = max(1, len(self.api_keys) * len(self.models))
+
+        for attempt in range(attempts):
             try:
                 return retry_with_backoff(
                     _make_request,
                     max_retries=2,
-                    exceptions=(RateLimitError, AuthenticationError, APITimeoutError, ConnectionError),
+                    exceptions=(
+                        RateLimitError,
+                        AuthenticationError,
+                        APITimeoutError,
+                        ConnectionError,
+                    ),
                 )
-            except RateLimitError:
-                logger.warning("Rate limit hit, rotating key")
-                if not self._rotate_key():
+            except (RateLimitError, AuthenticationError, APITimeoutError) as e:
+                logger.warning(f"LLM request failed ({type(e).__name__}), rotating key/model")
+                if not self._rotate_key() and not self._rotate_model():
                     break
-            except AuthenticationError:
-                logger.warning("Authentication error, rotating key")
-                if not self._rotate_key():
-                    break
-            except APITimeoutError:
-                logger.warning("Timeout, rotating key")
-                if not self._rotate_key():
-                    break
+                model = self.models[self.current_model_index]
             except Exception as e:
                 logger.error(f"LLM request failed: {e}")
-                if not self._rotate_key():
+                if not self._rotate_model():
                     break
+                model = self.models[self.current_model_index]
 
-        logger.error("All API keys exhausted")
+        logger.error("All LLM keys/models exhausted")
         return None
