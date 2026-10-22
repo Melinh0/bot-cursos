@@ -1,73 +1,79 @@
 # Bot Cursos
 
-Automated bot for completing DataScienceAcademy (LearnWorlds) courses with
-LLM-powered quiz and activity solving.
+Bot automatizado para conclusão de cursos DataScienceAcademy (LearnWorlds) com
+resolução de quizzes e atividades via LLM.
 
-## Architecture
+## Arquitetura
 
 ```
-main.py                           entry point: login → select course → unit loop → exit code
+main.py                           ponto de entrada: login → seleção de curso → loop de unidades → código de saída
   │
   ▼
-src/bot                           Selenium automation
-  ├── browser.py                  undetected ChromeDriver + restart
-  ├── login.py                    login, session check, re-login
-  ├── navigator.py                unit loop: video, quiz, activity, next
-  ├── recovery.py                 escalating recovery (reload → re-login → restart)
-  ├── scanner.py                  page scan, CSS selector suggestions
-  └── selectors.py                selector memory (learned selectors)
+src/bot                           automação Selenium
+  ├── browser.py                  ChromeDriver não detectado + restart
+  ├── login.py                    login, checagem de sessão, re-login
+  ├── navigator.py                loop de unidades: vídeo, quiz, atividade, próximo
+  ├── recovery.py                 recuperação escalonada (reload → re-login → restart)
+  ├── scanner.py                  varredura da página, sugestões de seletores CSS
+  └── selectors.py                memória de seletores (aprendidos)
   │
   ▼
-src/courses                       course domain
-  ├── discovery.py                enrolled course with lowest progress
-  ├── course_map.py               unit map with pending/done/skipped
-  ├── tracker.py                  progress stats
-  └── parser.py                   HTML content extraction
+src/courses                       domínio de cursos
+  ├── discovery.py                curso matriculado com menor progresso
+  ├── course_map.py               mapa de unidades (pendente/concluído/pulado)
+  ├── tracker.py                  estatísticas de progresso
+  └── parser.py                   extração de conteúdo HTML
   │
   ▼
-src/llm                           quiz/activity solving
-  ├── client.py                   OpenAI-compatible client, key/model rotation
-  ├── solver.py                   LLM solving + heuristic fallback
-  └── prompts.py                  prompt templates
+src/llm                           resolução de quiz/atividade
+  ├── client.py                   cliente compatível com OpenAI, rotação de keys/modelos
+  ├── solver.py                   resolução via LLM + fallback heurístico
+  └── prompts.py                  templates de prompt
   │
   ▼
-data/                             persistent state (gitignored)
-  ├── courses.json                unit map per course
-  ├── progress.json               progress counters
-  ├── selector_memory.json        learned selectors
-  └── runs/<timestamp>.jsonl      one JSON event per step
+data/                             estado persistente (gitignored)
+  ├── courses.json                mapa de unidades por curso
+  ├── progress.json               contadores de progresso
+  ├── selector_memory.json        seletores aprendidos
+  └── runs/<timestamp>.jsonl      um evento JSON por passo
 ```
 
-Cross-cutting: `src/config` (pydantic settings from `.env`) and `src/utils`
-(WebDriver/JS helpers, logging, run log).
+Transversal: `src/config` (settings pydantic a partir do `.env`) e `src/utils`
+(helpers WebDriver/JS, logging, run log).
 
-## How it works
+## Como funciona
 
-1. Logs in and discovers enrolled courses, picking the one with the lowest progress.
-2. Builds (or reuses) the course unit map and jumps to the first pending unit.
-3. Loops through units: seeks videos to the end, solves quizzes/activities with
-   the LLM, clicks Next, and marks the unit done.
-4. Persists state after every step, so an interrupted run resumes where it stopped.
+1. Faz login e descobre os cursos matriculados, escolhendo o de menor progresso.
+2. Monta (ou reaproveita) o mapa de unidades do curso e salta para a primeira
+   unidade pendente.
+3. Percorre as unidades: busca vídeos até o final, resolve quizzes/atividades
+   com a LLM, clica em Próximo e marca a unidade como concluída.
+4. Persiste o estado a cada passo, então uma execução interrompida retoma de
+   onde parou.
 
-## Features
+## Recursos
 
-- **Resume anytime** — unit map and progress persisted in `data/*.json`
-- **Fast JS-first probes** — quiz/activity/next detection in a single
-  `execute_script` roundtrip
-- **Escalating recovery** — reload → re-login → browser restart, plus
-  wrong-page recovery and a per-unit watchdog
-- **LLM solving** — OpenAI-compatible client with optional key/model rotation
-  and heuristic fallback
-- **Humanized pacing** — randomized delays between actions
-- **Smoke mode** — process a single unit to validate the whole pipeline quickly
+- **Retomar quando quiser** — mapa de unidades e progresso persistidos em
+  `data/*.json`
+- **Sondagens JS ultrarrápidas** — detecção de quiz/atividade/próximo em uma
+  única ida e volta do `execute_script`
+- **Recuperação escalonada** — reload → re-login → restart do navegador, além
+  de recuperação de página errada e watchdog por unidade
+- **Resolução via LLM** — cliente compatível com OpenAI com rotação opcional
+  de keys/modelos e fallback heurístico
+- **Ritmo humanizado** — delays aleatórios entre ações
+- **Modo smoke** — processa no máximo 1 unidade para validar todo o pipeline
+  rapidamente
+- **Janela em meia tela** — navegador ocupa metade da tela por padrão
+  (`BROWSER_HALF_SCREEN=true`)
 
-## Quick Start
+## Início rápido
 
-### Prerequisites
+### Pré-requisitos
 
-- Python 3.11+ and [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- Python 3.11+ e [uv](https://docs.astral.sh/uv/) (recomendado) ou pip
 - Chrome/Chromium
-- Ollama (local LLM) or any OpenAI-compatible API
+- Ollama (LLM local) ou qualquer API compatível com OpenAI
 
 ### Local
 
@@ -75,14 +81,14 @@ Cross-cutting: `src/config` (pydantic settings from `.env`) and `src/utils`
 uv venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
 uv pip install -r requirements.txt
-uv pip install pytest ruff      # dev tools
+uv pip install pytest ruff      # ferramentas de dev
 
-cp .env.example .env            # set DSA_EMAIL and DSA_PASSWORD
+cp .env.example .env            # preencha DSA_EMAIL e DSA_PASSWORD
 
-python main.py                  # full run
+python main.py                  # execução completa
 ```
 
-Smoke test (processes at most 1 unit per attempt):
+Teste smoke (processa no máximo 1 unidade por tentativa):
 
 ```bash
 # Linux/macOS
@@ -102,63 +108,66 @@ docker exec -it dsa-ollama ollama pull llama3.1
 docker logs -f dsa-bot
 ```
 
-## Configuration
+## Configuração
 
-Main variables (see `.env.example` for the full list):
+Variáveis principais (veja `.env.example` para a lista completa):
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DSA_EMAIL` | Account email | Required |
-| `DSA_PASSWORD` | Account password | Required |
-| `LLM_BASE_URL` | OpenAI-compatible endpoint | `http://localhost:11434/v1` |
-| `LLM_MODEL` | Model name | `llama3.1` |
-| `LLM_FALLBACK_MODELS` | Comma-separated fallback models | — |
-| `OLLAMA_API_KEYS` | Comma-separated API keys (rotation) | — |
-| `HEADLESS` | Run browser headless | `false` |
-| `AUTO_DISCOVER_COURSES` | Auto-select enrolled course | `true` |
-| `MAX_UNITS_PER_RUN` | Unit cap (0 = unlimited) | `0` |
-| `MAX_RUN_ATTEMPTS` | Attempts per run | `3` |
-| `UNIT_TIMEOUT_SECONDS` | Per-unit watchdog | `180` |
-| `SMOKE_MODE` | Process at most 1 unit | `false` |
-| `LOG_LEVEL` | Logging level | `INFO` |
+| Variável | Descrição | Padrão |
+|----------|-----------|--------|
+| `DSA_EMAIL` | E-mail da conta | Obrigatório |
+| `DSA_PASSWORD` | Senha da conta | Obrigatório |
+| `LLM_BASE_URL` | Endpoint compatível com OpenAI | `http://localhost:11434/v1` |
+| `LLM_MODEL` | Nome do modelo | `llama3.1` |
+| `LLM_FALLBACK_MODELS` | Modelos de fallback (separados por vírgula) | — |
+| `OLLAMA_API_KEYS` | API keys (separadas por vírgula, com rotação) | — |
+| `HEADLESS` | Rodar navegador sem interface | `false` |
+| `BROWSER_HALF_SCREEN` | Navegador em meia tela | `true` |
+| `AUTO_DISCOVER_COURSES` | Selecionar automaticamente o curso | `true` |
+| `MAX_UNITS_PER_RUN` | Limite de unidades (0 = ilimitado) | `0` |
+| `MAX_RUN_ATTEMPTS` | Tentativas por execução | `3` |
+| `UNIT_TIMEOUT_SECONDS` | Watchdog por unidade | `180` |
+| `UNIT_MIN_DWELL_SECONDS` | Tempo mínimo de permanência no unit antes do Next (a plataforma só marca `completed:true` com ~10s+ de tempo ativo) | `15` |
+| `UNIT_ACTIVITY_FLUSH_SECONDS` | Espera após o Next para o POST `update-path-player-activity` ser enviado | `10` |
+| `SMOKE_MODE` | Processar no máximo 1 unidade | `false` |
+| `LOG_LEVEL` | Nível de logging | `INFO` |
 
 ### LLM
 
-The bot talks to any OpenAI-compatible API (`LLM_BASE_URL`). For hosted
-providers, set `OLLAMA_API_KEYS` (comma-separated) and optionally
-`LLM_FALLBACK_MODELS` — keys and models rotate on 429, 401 and timeouts.
-Local Ollama needs no keys.
+O bot conversa com qualquer API compatível com OpenAI (`LLM_BASE_URL`). Para
+provedores hospedados, configure `OLLAMA_API_KEYS` (separadas por vírgula) e,
+opcionalmente, `LLM_FALLBACK_MODELS` — keys e modelos rotacionam em 429, 401 e
+timeouts. O Ollama local não precisa de keys.
 
-## Exit codes
+## Códigos de saída
 
-| Code | Meaning |
-|------|---------|
-| `0` | Course completed |
-| `1` | Progress saved, course incomplete — run again to resume |
-| `2` | Failed after all attempts |
+| Código | Significado |
+|--------|-------------|
+| `0` | Curso concluído |
+| `1` | Progresso salvo, curso incompleto — rode novamente para retomar |
+| `2` | Falhou após todas as tentativas |
 
-## Project Structure
+## Estrutura do projeto
 
 ```
 bot-cursos/
-├── main.py                  # Entry point
+├── main.py                  # Ponto de entrada
 ├── src/
-│   ├── bot/                 # Selenium automation
-│   ├── courses/             # Course domain (map, discovery, progress)
-│   ├── llm/                 # LLM client, solver, prompts
+│   ├── bot/                 # Automação Selenium
+│   ├── courses/             # Domínio de cursos (mapa, descoberta, progresso)
+│   ├── llm/                 # Cliente LLM, solver, prompts
 │   ├── utils/               # helpers, logging, runlog
-│   └── config/              # pydantic settings
-├── tests/                   # pytest suite
+│   └── config/              # settings pydantic
+├── tests/                   # Suíte pytest
 ├── docker/                  # Dockerfile + docker-compose
-└── data/                    # runtime state (gitignored)
+└── data/                    # Estado em runtime (gitignored)
 ```
 
-## Monitoring
+## Monitoramento
 
-Each run writes `data/runs/<timestamp>.jsonl` with one JSON event per step
+Cada execução grava `data/runs/<timestamp>.jsonl` com um evento JSON por passo
 (`login_ok`, `unit_done`, `quiz_solved`, `session_lost`, `wrong_page`, ...).
 
-## Testing
+## Testes
 
 ```bash
 uv run pytest
@@ -166,15 +175,15 @@ uv run ruff check main.py src tests
 uv run ruff format main.py src tests
 ```
 
-## Troubleshooting
+## Solução de problemas
 
-| Issue | Solution |
-|-------|----------|
-| Login fails | Check `DSA_EMAIL`/`DSA_PASSWORD` in `.env` |
-| Quiz/activity not detected | Selectors are auto-learned into `data/selector_memory.json`; delete the file to reset |
-| Slow first LLM answer | Ollama model cold start — warm it up with `ollama run llama3.1` |
-| Run feels slow | Validate with `SMOKE_MODE=true`, tune `HUMANIZE_DELAY_MIN/MAX` |
+| Problema | Solução |
+|----------|---------|
+| Login falha | Confira `DSA_EMAIL`/`DSA_PASSWORD` no `.env` |
+| Quiz/atividade não detectado | Seletores são auto-aprendidos em `data/selector_memory.json`; apague o arquivo para resetar |
+| Primeira resposta LLM lenta | Cold start do modelo Ollama — aqueça com `ollama run llama3.1` |
+| Execução lenta | Valide com `SMOKE_MODE=true`, ajuste `HUMANIZE_DELAY_MIN/MAX` |
 
-## License
+## Licença
 
-MIT
+MIT — veja o arquivo [LICENSE](LICENSE).
