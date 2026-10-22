@@ -146,13 +146,35 @@ return false;
 """
 )
 
-JS_ANY_PRESENT = """
+JS_MATCH_SELECTOR = (
+    JS_VIS
+    + """
 const sels = arguments[0];
 for (const sel of sels) {
-    try { if (document.querySelector(sel)) return true; } catch (e) {}
+    try { if (document.querySelector(sel)) return sel; } catch (e) {}
 }
-return false;
+const ctx = arguments[1];
+const target = arguments[2];
+const ctxVisible = arguments[3];
+if (ctx && target) {
+    let els;
+    try { els = document.querySelectorAll(ctx); } catch (e) { return ""; }
+    for (const el of els) {
+        if (ctxVisible && !__vis(el)) continue;
+        let p;
+        try { p = el.closest(target); } catch (e) { continue; }
+        if (!p || p === document.body || p === document.documentElement) continue;
+        const tag = p.tagName.toLowerCase();
+        if (p.id) return tag + "#" + CSS.escape(p.id);
+        if (p.classList && p.classList.length) {
+            return tag + "." + Array.from(p.classList).map(c => CSS.escape(c)).join(".");
+        }
+        return tag;
+    }
+}
+return "";
 """
+)
 
 JS_CLICK_FIRST = (
     JS_VIS
@@ -178,36 +200,26 @@ def js_any_visible(driver, css_selectors) -> bool | None:
         return None
 
 
-def js_any_present(driver, css_selectors) -> bool | None:
-    if not css_selectors:
-        return False
+def js_match_selector(
+    driver,
+    css_selectors,
+    context_sel: str = "",
+    context_target: str = "",
+    context_visible: bool = False,
+) -> str | None:
+    if not css_selectors and not (context_sel and context_target):
+        return ""
     try:
-        return bool(driver.execute_script(JS_ANY_PRESENT, css_selectors))
+        result = driver.execute_script(
+            JS_MATCH_SELECTOR,
+            css_selectors,
+            context_sel,
+            context_target,
+            bool(context_visible),
+        )
+        return str(result or "")
     except Exception as e:
-        logger.debug(f"js_any_present failed: {e}")
-        return None
-
-
-JS_QUIZ_PRESENT = """
-const sels = arguments[0];
-for (const sel of sels) {
-    try { if (document.querySelector(sel)) return true; } catch (e) {}
-}
-const ctx = "[class*='quiz'], [class*='question'], [class*='assessment'], [id*='quiz']";
-for (const r of document.querySelectorAll("input[type='radio']")) {
-    if (r.closest(ctx)) { return true; }
-}
-return false;
-"""
-
-
-def js_quiz_present(driver, css_selectors) -> bool | None:
-    if not css_selectors:
-        return False
-    try:
-        return bool(driver.execute_script(JS_QUIZ_PRESENT, css_selectors))
-    except Exception as e:
-        logger.debug(f"js_quiz_present failed: {e}")
+        logger.debug(f"js_match_selector failed: {e}")
         return None
 
 

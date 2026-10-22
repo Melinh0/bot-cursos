@@ -170,6 +170,13 @@ def run_attempt(
             logger.info(f"Jumping to first pending unit: {next_unit['id']}")
             navigator.driver.get(next_unit["url"])
             random_delay(1, 2)
+            jump_deadline = time.time() + 8
+            while time.time() < jump_deadline and not navigator.get_current_unit():
+                time.sleep(0.5)
+            if not navigator.get_current_unit():
+                logger.warning(f"Unit did not apply after jump, retrying: {next_unit['url']}")
+                navigator.driver.get(next_unit["url"])
+                random_delay(1, 2)
 
     navigator.scan_page("course_player")
     logger.info("Starting course automation loop")

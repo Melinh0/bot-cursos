@@ -136,7 +136,7 @@ class SelectorMemory:
             logger.error(f"Failed to save selector memory: {e}")
 
     def locators(self, name: str) -> list[Locator]:
-        learned = self.memory.get(name, [])
+        learned = [tuple(item) for item in self.memory.get(name, [])]
         base = BASE_SELECTORS.get(name, [])
         merged: list[Locator] = []
         for locator in [*learned, *base]:
@@ -145,15 +145,18 @@ class SelectorMemory:
         return merged
 
     def learn(self, name: str, locator: Locator) -> None:
+        entry = list(locator)
         learned = self.memory.setdefault(name, [])
-        if locator in learned:
+        if entry in learned:
             return
-        learned.insert(0, list(locator))
+        learned.insert(0, entry)
         logger.info(f"Learned new selector for '{name}': {locator}")
         self._save()
 
     def learn_from_element(self, name: str, element) -> Locator | None:
         try:
+            if (element.tag_name or "").lower() in ("html", "body", "head"):
+                return None
             element_id = element.get_attribute("id")
             if element_id:
                 locator = (By.ID, element_id)

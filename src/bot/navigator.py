@@ -18,10 +18,9 @@ from src.utils.helpers import (
     click_element,
     find_first,
     is_visible,
-    js_any_present,
     js_any_visible,
     js_click_first,
-    js_quiz_present,
+    js_match_selector,
     locators_to_css,
     random_delay,
 )
@@ -69,6 +68,7 @@ class CourseNavigator:
         self.stuck_count = 0
         self.visited_units: list[str] = []
         self.consecutive_errors = 0
+        self.wrong_page_count = 0
 
     def _log_event(self, kind: str, **fields) -> None:
         if self.run_log is not None:
@@ -251,65 +251,101 @@ class CourseNavigator:
 
     def check_for_quiz(self) -> dict | None:
         css = locators_to_css(self._locators("quiz_container", ("quiz", "question")))
-        present = js_quiz_present(self.driver, css)
-        if present is False:
-            return None
-
-        container = find_first(
+        matched = js_match_selector(
             self.driver,
-            self._locators("quiz_container", ("quiz", "question")),
-            timeout=2,
-            condition=EC.presence_of_element_located,
+            css,
+            "input[type='radio']",
+            "[class*='quiz'], [class*='question'], [class*='assessment'], [id*='quiz']",
         )
 
+        container = None
+        if matched:
+            try:
+                container = self.driver.find_element(By.CSS_SELECTOR, matched)
+            except Exception:
+                container = None
+        elif matched is None:
+            container = find_first(
+                self.driver,
+                self._locators("quiz_container", ("quiz", "question")),
+                timeout=2,
+                condition=EC.presence_of_element_located,
+            )
+
         if container is None:
-            container = self._discover_quiz_by_radio()
-            if container is None:
+            return None
+        try:
+            if container.tag_name.lower() in ("html", "body", "head"):
                 return None
+        except Exception:
+            return None
 
         data = self.extract_quiz_data(container)
         if data["options"]:
             self.memory.learn_from_element("quiz_container", container)
         return data
 
-    def _discover_quiz_by_radio(self):
-
-        try:
-            radios = self.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
-            if not radios:
-                return None
-            return self.driver.find_element(
-                By.CSS_SELECTOR,
-                "[class*='quiz'], [class*='question'], form",
-            )
-        except Exception:
-            return None
-
     def check_for_activity(self) -> dict | None:
-        css = locators_to_css(self._locators("activity_container", ("activity", "exercise")))
-        present = js_any_present(self.driver, css + [".course-player-content textarea"])
-        if present is False:
-            return None
-
-        container = find_first(
-            self.driver,
-            self._locators("activity_container", ("activity", "exercise")),
-            timeout=2,
-            condition=EC.presence_of_element_located,
-        )
-
+        container = self._find_activity_container()
         if container is None:
-            try:
-                container = self.driver.find_element(
-                    By.CSS_SELECTOR, ".course-player-content textarea"
-                )
-            except Exception:
-                return None
+            return None
 
         data = self.extract_activity_data(container)
         if data["prompt"]:
             self.memory.learn_from_element("activity_container", container)
         return data
+
+    def _find_activity_container(self):
+        css = locators_to_css(self._locators("activity_container", ("activity", "exercise")))
+        matched = js_match_selector(
+            self.driver,
+            css + [".course-player-content textarea"],
+            "textarea",
+            "[class*='activity'], [class*='exercise'], [class*='prompt']",
+            context_visible=True,
+        )
+
+        container = None
+        if matched:
+            try:
+                container = self.driver.find_element(By.CSS_SELECTOR, matched)
+            except Exception:
+                container = None
+        elif matched is None:
+            container = find_first(
+                self.driver,
+                self._locators("activity_container", ("activity", "exercise")),
+                timeout=2,
+                condition=EC.presence_of_element_located,
+            )
+            if container is None:
+                try:
+                    container = self.driver.find_element(
+                        By.CSS_SELECTOR, ".course-player-content textarea"
+                    )
+                except Exception:
+                    container = None
+
+        if container is None:
+            return None
+
+        try:
+            if container.tag_name.lower() == "textarea":
+                container = container.find_element(By.XPATH, "./..")
+            if container.tag_name.lower() in ("html", "body", "head"):
+                return None
+        except Exception:
+            return None
+
+        if not self._has_visible_textarea(container):
+            return None
+        return container
+
+    def _has_visible_textarea(self, container) -> bool:
+        try:
+            return any(is_visible(ta) for ta in container.find_elements(By.TAG_NAME, "textarea"))
+        except Exception:
+            return False
 
     def extract_quiz_data(self, container) -> dict:
         try:
@@ -722,7 +758,32 @@ class CourseNavigator:
                     break
                 unit_deadline = time.time() + settings.unit_timeout_seconds
                 continue
+
             self.consecutive_errors = 0
+
+            if "path-player" not in self.driver.current_url and not self._session_lost():
+                self.wrong_page_count += 1
+                logger.warning(
+                    f"Off the course player ({self.driver.current_url}), "
+                    f"recovery {self.wrong_page_count}/3"
+                )
+                self._log_event(
+                    "wrong_page",
+                    url=self.driver.current_url,
+                    count=self.wrong_page_count,
+                )
+                if self.wrong_page_count > 3:
+                    logger.error("Too many off-player pages, aborting the loop")
+                    break
+                navigated = self._goto_next_pending(course_id)
+                if not navigated and course_url:
+                    navigated = self.navigate_to_course(course_url)
+                if not navigated:
+                    logger.error("Could not get back to the course player, aborting the loop")
+                    break
+                unit_deadline = time.time() + settings.unit_timeout_seconds
+                continue
+            self.wrong_page_count = 0
 
             unit = self.get_current_unit()
             if unit and unit != self.current_unit:
@@ -756,6 +817,7 @@ class CourseNavigator:
                 ):
                     logger.error("Could not recover the session, aborting the loop")
                     break
+                self.wrong_page_count = 0
                 unit_deadline = time.time() + settings.unit_timeout_seconds
                 continue
 
