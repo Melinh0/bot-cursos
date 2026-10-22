@@ -69,6 +69,7 @@ class CourseNavigator:
         self.visited_units: list[str] = []
         self.consecutive_errors = 0
         self.wrong_page_count = 0
+        self.unit_opened_at = 0.0
 
     def _log_event(self, kind: str, **fields) -> None:
         if self.run_log is not None:
@@ -670,6 +671,58 @@ class CourseNavigator:
                 logger.debug(f"Video handling failed: {e}")
                 return
 
+    def _wait_unit_dwell(self, unit: str) -> None:
+        if not settings.unit_min_dwell_seconds:
+            return
+        opened = self.unit_opened_at or time.time()
+        remaining = settings.unit_min_dwell_seconds - (time.time() - opened)
+        if remaining <= 0:
+            return
+        logger.info(f"Holding unit '{unit}' for {remaining:.1f}s before Next (platform dwell)")
+        self._soft_scroll()
+        time.sleep(remaining)
+
+    def _soft_scroll(self) -> None:
+        try:
+            self.driver.execute_script(
+                """
+                const h = Math.max(
+                    document.body ? document.body.scrollHeight : 0,
+                    document.documentElement ? document.documentElement.scrollHeight : 0
+                );
+                window.scrollTo(0, Math.min(h, 1200));
+                """
+            )
+        except Exception:
+            pass
+
+    def _activity_reported(self, unit: str) -> bool:
+        probe = unit.removesuffix("Unit")
+        try:
+            return bool(
+                self.driver.execute_script(
+                    "return window.__lwFind ? window.__lwFind(arguments[0]) : false;", probe
+                )
+            )
+        except Exception:
+            return False
+
+    def _wait_activity_flush(self, unit: str) -> None:
+        timeout = settings.unit_activity_flush_seconds
+        if not timeout:
+            return
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if unit and self._activity_reported(unit):
+                logger.info(f"Platform confirmed completion for unit '{unit}'")
+                self._log_event("activity_reported", unit=unit)
+                return
+            time.sleep(1)
+        logger.warning(
+            f"Activity post for unit '{unit}' not confirmed within {timeout}s, continuing"
+        )
+        self._log_event("activity_report_missing", unit=unit)
+
     def run_course_loop(
         self,
         llm_solver,
@@ -787,6 +840,7 @@ class CourseNavigator:
                         f" unit '{self.current_unit}' -> '{unit}'"
                     )
                 self.current_unit = unit
+                self.unit_opened_at = time.time()
                 self.stuck_count = 0
                 self.visited_units.append(unit)
                 if course_id and self.course_map is not None:
@@ -877,9 +931,12 @@ class CourseNavigator:
                 unit_deadline = time.time() + settings.unit_timeout_seconds
                 continue
 
+            self._wait_unit_dwell(unit)
+
             if self.click_next():
                 if unit:
                     self._mark_unit_done(unit, course_id, course_url, progress_tracker)
+                self._wait_activity_flush(unit)
                 processed += 1
                 unit_deadline = time.time() + settings.unit_timeout_seconds
                 continue

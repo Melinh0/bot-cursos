@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     browser_timeout: int = Field(default=30, alias="BROWSER_TIMEOUT")
     implicit_wait: int = Field(default=0, alias="IMPLICIT_WAIT")
     window_size: str = Field(default="1920,1080", alias="WINDOW_SIZE")
+    browser_half_screen: bool = Field(default=True, alias="BROWSER_HALF_SCREEN")
 
     max_run_attempts: int = Field(default=3, alias="MAX_RUN_ATTEMPTS")
     max_units_per_run: int = Field(default=0, alias="MAX_UNITS_PER_RUN")
@@ -34,6 +35,8 @@ class Settings(BaseSettings):
     humanize_delay_min: float = Field(default=0.4, alias="HUMANIZE_DELAY_MIN")
     humanize_delay_max: float = Field(default=1.2, alias="HUMANIZE_DELAY_MAX")
     unit_timeout_seconds: int = Field(default=180, alias="UNIT_TIMEOUT_SECONDS")
+    unit_min_dwell_seconds: int = Field(default=15, alias="UNIT_MIN_DWELL_SECONDS")
+    unit_activity_flush_seconds: int = Field(default=10, alias="UNIT_ACTIVITY_FLUSH_SECONDS")
     max_stuck_attempts: int = Field(default=3, alias="MAX_STUCK_ATTEMPTS")
     smoke_mode: bool = Field(default=False, alias="SMOKE_MODE")
 
@@ -64,7 +67,7 @@ class Settings(BaseSettings):
     @property
     def window_size_list(self) -> list[int]:
         try:
-            width, height = self.window_size.lower().split("x")
+            width, height = self.window_size.lower().replace(",", "x").split("x")
             return [int(width), int(height)]
         except Exception:
             return [1920, 1080]
