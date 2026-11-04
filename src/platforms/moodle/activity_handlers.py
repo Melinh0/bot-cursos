@@ -2,6 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from src.llm import QuizSolver
 from src.utils.helpers import random_delay
 from src.utils.logging import get_logger
 
@@ -45,19 +46,63 @@ class MoodleActivityHandler:
             return False
 
     def handle_quiz(self):
-        logger.info("Quiz handling not implemented")
-        return False
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
+            questions = self.driver.find_elements(
+                By.CSS_SELECTOR, ".que, .qtext, [data-region='question']"
+            )
+            if not questions:
+                logger.warning("No quiz questions found")
+                return False
+            solver = QuizSolver()
+            for q in questions:
+                try:
+                    qtext = q.find_element(By.CSS_SELECTOR, ".qtext, .que__content").text.strip()
+                    options = q.find_elements(
+                        By.CSS_SELECTOR, "input[type='radio'], input[type='checkbox']"
+                    )
+                    opts = [opt.get_attribute("value") or "" for opt in options]
+                    if qtext and opts:
+                        quiz_data = {"question": qtext, "options": opts}
+                        idx = solver.solve_quiz(quiz_data)
+                        if idx is not None and idx < len(options):
+                            options[idx].click()
+                except Exception:
+                    continue
+            random_delay(1, 2)
+            submit = self.driver.find_elements(
+                By.CSS_SELECTOR, "input[type='submit'], button[type='submit'], #submitbutton"
+            )
+            if submit:
+                submit[0].click()
+                random_delay(2, 3)
+            logger.info("Quiz handled with LLM")
+            return True
+        except Exception:
+            return False
 
     def handle_feedback(self):
         try:
             WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
+            solver = QuizSolver()
             inputs = self.driver.find_elements(By.CSS_SELECTOR, "input[type='text'], textarea")
             for inp in inputs:
                 try:
-                    inp.clear()
-                    inp.send_keys("Resposta automática")
+                    label = ""
+                    parent = inp.find_element(By.XPATH, "./ancestor::div[1]")
+                    labels = parent.find_elements(By.CSS_SELECTOR, "label, .fitemtitle, .form-item")
+                    if labels:
+                        label = labels[0].text.strip()
+                    prompt_text = f"Responda de forma breve e profissional à pergunta: {label}"
+                    activity_data = {"prompt": prompt_text}
+                    response = solver.solve_activity(activity_data)
+                    if response:
+                        inp.clear()
+                        inp.send_keys(response[:500])
                 except Exception:
                     continue
             random_delay(1, 2)
@@ -67,7 +112,7 @@ class MoodleActivityHandler:
             if submit:
                 submit[0].click()
                 random_delay(2, 3)
-            logger.info("Feedback handled")
+            logger.info("Feedback handled with LLM")
             return True
         except Exception:
             return False
