@@ -27,6 +27,6 @@ class MoodleLogin:
         pass_field.send_keys(self.password)
         submit = self.driver.find_element(By.ID, "loginbtn")
         submit.click()
-        WebDriverWait(self.driver, 10).until(EC.url_contains("/my/"))
+        WebDriverWait(self.driver, 15).until(lambda d: "/login/" not in d.current_url)
         logger.info("Moodle login successful")
         return True
