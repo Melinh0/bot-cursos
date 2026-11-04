@@ -1,0 +1,6 @@
+LOGIN_URL = "/login/index.php"
+USERNAME_SELECTOR = "id=username"
+PASSWORD_SELECTOR = "id=password"
+LOGIN_BUTTON_SELECTOR = "id=loginbtn"
+COURSE_CARD_SELECTOR = ".course-card, .card, .coursebox"
+COURSE_LINK_SELECTOR = "a"

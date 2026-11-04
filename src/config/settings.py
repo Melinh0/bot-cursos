@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     dsa_email: str = Field(..., alias="DSA_EMAIL")
     dsa_password: str = Field(..., alias="DSA_PASSWORD")
 
+    platform: str = Field(default="dsa", alias="PLATFORM")
+    moodle_base_url: str = Field(default="https://ead.hardware.org.br", alias="MOODLE_BASE_URL")
+    moodle_user: str = Field(default="", alias="MOODLE_USER")
+    moodle_pass: str = Field(default="", alias="MOODLE_PASS")
+
     llm_base_url: str = Field(default="http://localhost:11434/v1", alias="LLM_BASE_URL")
     llm_model: str = Field(default="llama3.1", alias="LLM_MODEL")
     llm_temperature: float = Field(default=0.1, alias="LLM_TEMPERATURE")
