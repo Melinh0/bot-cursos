@@ -21,7 +21,54 @@ from src.utils.helpers import random_delay
 from src.utils.logging import get_logger, setup_logging
 from src.utils.runlog import RunLog
 
+try:
+    from src.platforms.moodle.activity_handlers import MoodleActivityHandler
+    from src.platforms.moodle.login import MoodleLogin
+    from src.platforms.moodle.navigator import MoodleNavigator
+
+    MOODLE_AVAILABLE = True
+except Exception:
+    MOODLE_AVAILABLE = False
+
 logger = get_logger(__name__)
+
+
+def run_moodle():
+    logger.info("Starting Moodle Bot")
+    run_log = RunLog()
+    manager = BrowserManager()
+    with manager:
+        driver = manager.get_driver()
+        login = MoodleLogin(driver)
+        login.login()
+        run_log.event("login_ok")
+        navigator = MoodleNavigator(driver)
+        course = navigator.find_course("Softex")
+        if not course:
+            logger.error("Softex course not found")
+            run_log.event("course_not_found")
+            return 2
+        logger.info(f"Course found: {course['title']}")
+        run_log.event("course_found", title=course["title"], url=course["url"])
+        driver.get(course["url"])
+        from selenium.webdriver.common.by import By
+
+        links = driver.find_elements(By.CSS_SELECTOR, "a")
+        activity_urls = []
+        for link in links:
+            href = link.get_attribute("href") or ""
+            if "mod/" in href:
+                activity_urls.append(href)
+        handler = MoodleActivityHandler(driver)
+        handled = 0
+        for url in activity_urls[:20]:
+            if handler.handle(url):
+                handled += 1
+        logger.info(f"Handled {handled}/{len(activity_urls)} activities")
+        run_log.event("activities_handled", handled=handled, total=len(activity_urls))
+    run_log.event("finished", status="completed")
+    return 0
+
 
 COURSE_KEYWORDS = ("fundamentos", "python", "curso", "course", "continuar", "retomar")
 
@@ -194,6 +241,8 @@ def run_attempt(
 
 def main():
     setup_logging()
+    if settings.platform.lower() == "moodle" and MOODLE_AVAILABLE:
+        return run_moodle()
     logger.info("Starting DataScienceAcademy Bot")
     if settings.smoke_mode:
         logger.info("SMOKE MODE: will process at most 1 unit")
