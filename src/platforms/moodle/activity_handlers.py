@@ -23,7 +23,9 @@ class MoodleActivityHandler:
             return self.handle_feedback()
         if "mod/resource" in url or "mod/url" in url:
             return self.handle_resource()
-        return False
+        if "mod/page" in url or "mod/forum" in url:
+            return self.handle_generic()
+        return self.handle_generic()
 
     def handle_assign(self):
         try:
@@ -74,3 +76,25 @@ class MoodleActivityHandler:
         random_delay(15, 25)
         logger.info("Resource viewed")
         return True
+
+    def handle_generic(self):
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
+            random_delay(3, 5)
+            submit = self.driver.find_elements(
+                By.CSS_SELECTOR, "input[type='submit'], button[type='submit'], a.btn"
+            )
+            for btn in submit:
+                try:
+                    if btn.is_displayed() and btn.is_enabled():
+                        btn.click()
+                        random_delay(2, 3)
+                        break
+                except Exception:
+                    continue
+            logger.info("Generic activity handled")
+            return True
+        except Exception:
+            return False
