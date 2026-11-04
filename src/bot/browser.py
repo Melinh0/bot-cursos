@@ -82,6 +82,9 @@ class BrowserManager:
 
         self.driver = webdriver.Chrome(options=options)
 
+        if settings.headless:
+            self._mask_headless_ua()
+
         try:
             self.driver.execute_cdp_cmd(
                 "Page.addScriptToEvaluateOnNewDocument", {"source": JS_ACTIVITY_HOOK}
@@ -97,6 +100,18 @@ class BrowserManager:
 
         logger.info("Browser initialized successfully")
         return self.driver
+
+    def _mask_headless_ua(self) -> None:
+        try:
+            ua = self.driver.execute_script("return navigator.userAgent;")
+            masked = ua.replace("HeadlessChrome", "Chrome")
+            self.driver.execute_cdp_cmd(
+                "Network.setUserAgentOverride",
+                {"userAgent": masked, "platform": "Win32"},
+            )
+            logger.info("Headless user-agent masked")
+        except Exception as e:
+            logger.warning(f"Could not mask headless user-agent: {e}")
 
     def _prepare_profile_dir(self) -> str:
         profile = Path(settings.browser_profile_dir)
