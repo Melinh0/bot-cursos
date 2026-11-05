@@ -13,7 +13,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from src.bot.recovery import RecoveryManager
 from src.bot.selectors import SelectorMemory
 from src.config.settings import settings
-from src.courses.course_map import CourseMap, extract_course_id
+from src.platforms.dsa.course_map import CourseMap, extract_course_id
 from src.utils.helpers import (
     click_element,
     find_first,

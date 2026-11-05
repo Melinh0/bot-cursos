@@ -1,4 +1,4 @@
-from src.courses.discovery import CourseDiscovery, player_url, select_lowest_progress
+from src.platforms.dsa.discovery import CourseDiscovery, player_url, select_lowest_progress
 
 
 class FakeLink:

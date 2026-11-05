@@ -67,7 +67,9 @@ Transversal: `src/config` (settings pydantic a partir do `.env`) e `src/utils`
 - **Janela em meia tela** — navegador ocupa metade da tela por padrão
   (`BROWSER_HALF_SCREEN=true`)
 
-## Início rápido
+## Execução por plataforma
+
+### Bot DSA DataScienceAcademy
 
 ### Pré-requisitos
 
@@ -84,19 +86,45 @@ uv pip install -r requirements.txt
 uv pip install pytest ruff      # ferramentas de dev
 
 cp .env.example .env            # preencha DSA_EMAIL e DSA_PASSWORD
-
-python main.py                  # execução completa
+PLATFORM=dsa python main.py     # execução completa
 ```
 
 Teste smoke (processa no máximo 1 unidade por tentativa):
 
 ```bash
 # Linux/macOS
-SMOKE_MODE=true python main.py
+PLATFORM=dsa SMOKE_MODE=true python main.py
 
 # Windows PowerShell
-$env:SMOKE_MODE='true'; python main.py
+$env:PLATFORM='dsa'; $env:SMOKE_MODE='true'; python main.py
 ```
+
+### Bot Moodle Softex
+
+### Pré-requisitos
+
+- Python 3.11+ e [uv](https://docs.astral.sh/uv/)
+- Chrome/Chromium
+- Perfil persistente recomendado para contornar anti-bot
+
+### Local
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+
+cp .env.example .env            # preencha MOODLE_USER, MOODLE_PASS, MOODLE_BASE_URL
+PLATFORM=moodle HEADLESS=false BROWSER_PERSISTENT_PROFILE=true python main.py
+```
+
+Script Windows pronto:
+
+```powershell
+run_local_moodle.bat
+```
+
+O bot faz login, localiza o curso Softex e processa atividades com LLM para quizzes e formulários semanais.
 
 ### Docker
 
@@ -114,8 +142,12 @@ Variáveis principais (veja `.env.example` para a lista completa):
 
 | Variável | Descrição | Padrão |
 |----------|-----------|--------|
-| `DSA_EMAIL` | E-mail da conta | Obrigatório |
-| `DSA_PASSWORD` | Senha da conta | Obrigatório |
+| `PLATFORM` | `dsa` ou `moodle` | `dsa` |
+| `DSA_EMAIL` | E-mail da conta DSA | Obrigatório |
+| `DSA_PASSWORD` | Senha da conta DSA | Obrigatório |
+| `MOODLE_BASE_URL` | URL base do Moodle | `https://ead.hardware.org.br` |
+| `MOODLE_USER` | Usuário Moodle | Obrigatório |
+| `MOODLE_PASS` | Senha Moodle | Obrigatório |
 | `LLM_BASE_URL` | Endpoint compatível com OpenAI | `http://localhost:11434/v1` |
 | `LLM_MODEL` | Nome do modelo | `llama3.1` |
 | `LLM_FALLBACK_MODELS` | Modelos de fallback (separados por vírgula) | — |
@@ -152,13 +184,15 @@ timeouts. O Ollama local não precisa de keys.
 
 ```
 bot-cursos/
-├── main.py                  # Ponto de entrada
+├── main.py                  # Ponto de entrada com PLATFORM=dsa|moodle
 ├── src/
-│   ├── bot/                 # Automação Selenium
-│   ├── courses/             # Domínio de cursos (mapa, descoberta, progresso)
+│   ├── core/                # Browser, recovery, scanner, selectors, utils
+│   ├── platforms/
+│   │   ├── dsa/             # Login, navigator, course_map, discovery DSA
+│   │   └── moodle/          # Login, navigator, activity_handlers Moodle
 │   ├── llm/                 # Cliente LLM, solver, prompts
-│   ├── utils/               # helpers, logging, runlog
-│   └── config/              # settings pydantic
+│   ├── config/              # settings pydantic
+│   └── utils/               # helpers, logging, runlog
 ├── tests/                   # Suíte pytest
 ├── docker/                  # Dockerfile + docker-compose
 └── data/                    # Estado em runtime (gitignored)

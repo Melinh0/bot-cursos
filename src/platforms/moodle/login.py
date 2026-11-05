@@ -18,7 +18,7 @@ class MoodleLogin:
     def login(self):
         login_url = f"{self.base_url}/login/index.php"
         self.driver.get(login_url)
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "username")))
+        WebDriverWait(self.driver, 30).until(EC.presence_of_element_located((By.ID, "username")))
         user_field = self.driver.find_element(By.ID, "username")
         pass_field = self.driver.find_element(By.ID, "password")
         user_field.clear()

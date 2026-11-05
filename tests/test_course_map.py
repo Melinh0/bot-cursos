@@ -1,4 +1,4 @@
-from src.courses.course_map import (
+from src.platforms.dsa.course_map import (
     STATUS_DONE,
     STATUS_PENDING,
     STATUS_SKIPPED,

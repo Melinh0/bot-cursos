@@ -1,5 +1,5 @@
-from src.bot.navigator import CourseNavigator
 from src.bot.selectors import SelectorMemory
+from src.platforms.dsa.navigator import CourseNavigator
 
 
 class FakeElement:
