@@ -32,3 +32,27 @@ Code:
 {code}
 
 Identify any issues and suggest improvements. Be concise."""
+
+ACTIVITY_ANALYSIS_PROMPT = """Analise a página de atividade de um curso Moodle exibida abaixo.
+
+TÍTULO E URL:
+{title}
+
+CONTEÚDO DA PÁGINA:
+{content}
+
+Tarefa: determine o que esta atividade exige do aluno para ser concluída e qual ação o bot deve executar.
+
+Responda APENAS com um JSON válido, sem texto fora do JSON:
+{{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "responder|ler|enviar|marcar_concluido|navegar", "motivo": "explicação curta em português do que a página pede e como concluir", "resposta": "texto pronto para colar em campo aberto da atividade, ou string vazia se não houver"}}
+
+Se a página contiver perguntas, inclua no motivo a resposta correta de cada uma."""
+
+COURSE_REVIEW_PROMPT = """Você é um tutor que avalia o andamento de um aluno em um curso online.
+
+Curso: {course}
+
+Atividades detectadas na página do curso:
+{activities}
+
+Escreva em português, em até 4 linhas: quantas atividades já estão concluídas, quais ainda faltam e o que o aluno precisa fazer para chegar a 100% do curso. Seja específico citando os títulos das atividades pendentes."""

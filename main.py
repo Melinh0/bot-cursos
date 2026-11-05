@@ -36,6 +36,7 @@ logger = get_logger(__name__)
 def run_moodle():
     logger.info("Starting Moodle Bot")
     run_log = RunLog()
+    quiz_solver = QuizSolver()
     manager = BrowserManager()
     with manager:
         driver = manager.get_driver()
@@ -50,22 +51,30 @@ def run_moodle():
             return 2
         logger.info(f"Course found: {course['title']}")
         run_log.event("course_found", title=course["title"], url=course["url"])
-        driver.get(course["url"])
-        from selenium.webdriver.common.by import By
 
-        links = driver.find_elements(By.CSS_SELECTOR, "a")
-        activity_urls = []
-        for link in links:
-            href = link.get_attribute("href") or ""
-            if "mod/" in href:
-                activity_urls.append(href)
-        handler = MoodleActivityHandler(driver)
+        driver.get(course["url"])
+        random_delay(2, 3)
+        activities = navigator.collect_activities()
+        review = quiz_solver.review_progress(course["title"], activities)
+        if review:
+            logger.info(f"LLM course review (before): {review}")
+            run_log.event("llm_course_review", stage="before", summary=review)
+
+        handler = MoodleActivityHandler(driver, run_log)
         handled = 0
-        for url in activity_urls[:20]:
-            if handler.handle(url):
+        for activity in activities[:20]:
+            if handler.handle(activity["url"]):
                 handled += 1
-        logger.info(f"Handled {handled}/{len(activity_urls)} activities")
-        run_log.event("activities_handled", handled=handled, total=len(activity_urls))
+        logger.info(f"Handled {handled}/{len(activities)} activities")
+        run_log.event("activities_handled", handled=handled, total=len(activities))
+
+        driver.get(course["url"])
+        random_delay(2, 3)
+        activities_after = navigator.collect_activities()
+        review_after = quiz_solver.review_progress(course["title"], activities_after)
+        if review_after:
+            logger.info(f"LLM course review (after): {review_after}")
+            run_log.event("llm_course_review", stage="after", summary=review_after)
     run_log.event("finished", status="completed")
     return 0
 

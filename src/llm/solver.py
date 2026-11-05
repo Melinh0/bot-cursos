@@ -1,7 +1,13 @@
+import json
 import re
 
 from src.llm.client import LLMClient
-from src.llm.prompts import ACTIVITY_PROMPT, QUIZ_PROMPT
+from src.llm.prompts import (
+    ACTIVITY_ANALYSIS_PROMPT,
+    ACTIVITY_PROMPT,
+    COURSE_REVIEW_PROMPT,
+    QUIZ_PROMPT,
+)
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -101,3 +107,50 @@ class QuizSolver:
             {"role": "user", "content": challenge},
         ]
         return self.client.chat_completion(messages, temperature=0.1, max_tokens=2048)
+
+    def _parse_analysis(self, response: str | None) -> dict:
+        if not response:
+            return {}
+        match = re.search(r"\{.*\}", response, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group())
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+        return {"tipo": "desconhecido", "motivo": response.strip()[:300]}
+
+    def analyze_activity(self, title: str, content: str) -> dict:
+        prompt = ACTIVITY_ANALYSIS_PROMPT.format(title=title, content=content[:3500])
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Você analisa páginas de atividades do Moodle e responde "
+                    "APENAS com JSON válido, sem texto adicional."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ]
+        response = self.client.chat_completion(messages, temperature=0.0, max_tokens=400)
+        return self._parse_analysis(response)
+
+    def review_progress(self, course_title: str, activities: list[dict]) -> str | None:
+        lines = []
+        for activity in activities[:40]:
+            status = "concluída" if activity.get("done") else "pendente"
+            lines.append(
+                f"- [{status}] {activity.get('title', '')} ({activity.get('type', 'atividade')})"
+            )
+        if not lines:
+            return None
+        prompt = COURSE_REVIEW_PROMPT.format(course=course_title, activities="\n".join(lines))
+        messages = [
+            {"role": "system", "content": "Você é um tutor objetivo. Responda em português."},
+            {"role": "user", "content": prompt},
+        ]
+        response = self.client.chat_completion(messages, temperature=0.2, max_tokens=300)
+        if response:
+            return response.strip()
+        return None
