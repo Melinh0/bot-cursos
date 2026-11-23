@@ -108,18 +108,71 @@ class QuizSolver:
         ]
         return self.client.chat_completion(messages, temperature=0.1, max_tokens=2048)
 
+    VALID_TYPES = ("quiz", "assignment", "feedback", "resource", "page", "forum", "desconhecido")
+    VALID_ACTIONS = ("responder", "ler", "enviar", "marcar_concluido", "navegar")
+    PLACEHOLDER_RE = re.compile(r"quiz\|assignment\|feedback\|resource\|page\|forum\|desconhecido")
+    ACTION_PLACEHOLDER_RE = re.compile(r"responder\|ler\|enviar\|marcar_concluido\|navegar")
+
     def _parse_analysis(self, response: str | None) -> dict:
         if not response:
             return {}
-        match = re.search(r"\{.*\}", response, re.DOTALL)
-        if match:
-            try:
-                parsed = json.loads(match.group())
-                if isinstance(parsed, dict):
-                    return parsed
-            except json.JSONDecodeError:
-                pass
-        return {"tipo": "desconhecido", "motivo": response.strip()[:300]}
+        cleaned = self._strip_placeholders(response)
+        parsed = self._try_json(cleaned)
+        if parsed:
+            return parsed
+        return self._from_free_text(cleaned)
+
+    def _strip_placeholders(self, text: str) -> str:
+        text = self.PLACEHOLDER_RE.sub("desconhecido", text)
+        text = self.ACTION_PLACEHOLDER_RE.sub("navegar", text)
+        text = re.sub(r"```json\s*", "", text)
+        text = re.sub(r"```\s*", "", text)
+        return text.strip()
+
+    def _try_json(self, text: str) -> dict | None:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
+            return None
+        try:
+            parsed = json.loads(match.group())
+            if isinstance(parsed, dict):
+                parsed["tipo"] = self._normalize(
+                    parsed.get("tipo", ""), self.VALID_TYPES, "desconhecido"
+                )
+                parsed["acao"] = self._normalize(
+                    parsed.get("acao", ""), self.VALID_ACTIONS, "navegar"
+                )
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        return None
+
+    def _from_free_text(self, text: str) -> dict:
+        tipo = "desconhecido"
+        acao = "navegar"
+        for t in self.VALID_TYPES:
+            if t in text.lower():
+                tipo = t
+                break
+        for a in self.VALID_ACTIONS:
+            if a in text.lower():
+                acao = a
+                break
+        motivo = self._clean_motivo(text)
+        return {"tipo": tipo, "acao": acao, "motivo": motivo}
+
+    def _normalize(self, value: str, valid: tuple[str, ...], default: str) -> str:
+        if not value:
+            return default
+        value = str(value).strip().lower()
+        for v in valid:
+            if v in value:
+                return v
+        return default
+
+    def _clean_motivo(self, text: str) -> str:
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:300]
 
     def analyze_activity(self, title: str, content: str) -> dict:
         prompt = ACTIVITY_ANALYSIS_PROMPT.format(title=title, content=content[:3500])
