@@ -37,6 +37,8 @@ class MoodleActivityHandler:
             return self.handle_feedback()
         if "mod/resource" in url or "mod/url" in url:
             return self.handle_resource()
+        if "mod/questionnaire" in url:
+            return self.handle_llm_form(analysis)
         if action in ("responder", "enviar"):
             return self.handle_llm_form(analysis)
         return self.handle_generic()
@@ -85,24 +87,84 @@ class MoodleActivityHandler:
             pass
         return ""
 
-    def _fill_text_fields(self, analysis):
+    def _fill_form_fields(self, analysis):
         filled = 0
-        inputs = self.driver.find_elements(By.CSS_SELECTOR, "input[type='text'], textarea")
-        fallback = (analysis.get("resposta") or "").strip()
-        for inp in inputs:
+        model_answer = (analysis.get("resposta") or "").strip()
+        model_reasoning = (analysis.get("motivo") or "").strip()
+        fields = self.driver.find_elements(
+            By.CSS_SELECTOR,
+            "input[type='text'], input[type='email'], input[type='number'], textarea, select",
+        )
+        radios = self.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+        radios_by_name = {}
+        for rb in radios:
+            try:
+                if not rb.is_displayed():
+                    continue
+                name = rb.get_attribute("name") or ""
+                radios_by_name.setdefault(name, []).append(rb)
+            except Exception:
+                continue
+        checkboxes = self.driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
+
+        all_fields = list(fields)
+        for name, group in radios_by_name.items():
+            label = self._field_label(group[0])
+            answer = self.solver.solve_activity({"prompt": label}) or model_answer
+            chosen = None
+            for rb in group:
+                try:
+                    if not (rb.is_displayed() and rb.is_enabled()):
+                        continue
+                    value = rb.get_attribute("value") or ""
+                    if answer and value.lower().startswith(answer.lower()):
+                        chosen = rb
+                        break
+                except Exception:
+                    continue
+            if chosen is None and answer:
+                chosen = group[0]
+            if chosen:
+                try:
+                    chosen.click()
+                    filled += 1
+                except Exception:
+                    pass
+
+        for cb in checkboxes:
+            try:
+                if not cb.is_displayed():
+                    continue
+                label = self._field_label(cb)
+                answer = self.solver.solve_activity({"prompt": label}) or model_answer
+                if not answer:
+                    continue
+                if not cb.is_selected():
+                    cb.click()
+                    filled += 1
+            except Exception:
+                continue
+
+        for inp in all_fields:
             try:
                 if not inp.is_displayed():
                     continue
                 label = self._field_label(inp)
-                answer = ""
-                if label:
-                    answer = self.solver.solve_activity({"prompt": label}) or ""
-                if not answer:
-                    answer = fallback
+                answer = (
+                    self.solver.solve_activity({"prompt": label}) or model_answer or model_reasoning
+                )
                 if not answer:
                     continue
-                inp.clear()
-                inp.send_keys(answer[:500])
+                tag = inp.tag_name.lower()
+                if tag == "select":
+                    self.driver.execute_script(
+                        "arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
+                        inp,
+                        answer[:100],
+                    )
+                else:
+                    inp.clear()
+                    inp.send_keys(answer[:500])
                 filled += 1
             except Exception:
                 continue
@@ -143,7 +205,7 @@ class MoodleActivityHandler:
 
     def handle_llm_form(self, analysis):
         try:
-            filled = self._fill_text_fields(analysis)
+            filled = self._fill_form_fields(analysis)
             random_delay(1, 2)
             self._click_submit()
             logger.info(f"LLM form handled ({filled} fields filled from LLM answers)")
@@ -203,7 +265,7 @@ class MoodleActivityHandler:
             WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
-            filled = self._fill_text_fields({})
+            filled = self._fill_form_fields({})
             random_delay(1, 2)
             self._click_submit()
             logger.info(f"Feedback handled with LLM ({filled} fields filled)")
