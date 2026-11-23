@@ -1,0 +1,125 @@
+FROM qwen2.5:0.5b
+
+SYSTEM """Você analisa páginas de atividades do Moodle e responde APENAS com JSON válido.
+Campos obrigatórios: tipo, acao, motivo.
+Valores de tipo: quiz, assignment, feedback, resource, page, forum, desconhecido.
+Valores de acao: responder, ler, enviar, marcar_concluido, navegar.
+Responda em português, sem markdown, sem texto fora do JSON."""
+
+PARAMETER temperature 0.0
+PARAMETER num_predict 200
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "resource", "acao": "navegar", "motivo": "A página é uma orientação geral para o curso e não exige que o aluno faça nada para ser concluída. O aluno deve apenas ler o conteúdo."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "resource", "acao": "navegar", "motivo": "A página é uma orientação geral para o curso e não exige que o aluno faça nada para ser concluída. O aluno deve apenas ler o conteúdo."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "forum", "acao": "navegar", "motivo": "A página é um fórum de discussão onde os alunos devem acompanhar os comunicados oficiais da coordenação. Não há uma tarefa específica para ser concluída, apenas a necessidade de navegar e ler os comunicados."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede informações sobre o que o aluno deve fazer para concluí-la, incluindo ação de responder, enviar e marcar a atividade como concluída."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede informações sobre o conteúdo da página, incluindo a condição de conclusão e a ação a ser executada para a mesma."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede informações sobre o que o aluno deve fazer para concluí-la, incluindo ação de responder, enviar e marcar a atividade como concluída."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/page/view.php?id=6756
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede a conclusão de uma atividade, mas não especifica quais são as perguntas ou questões que o aluno deve responder."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "a página pede informações sobre o conteúdo da página, incluindo a condição de conclusão e a ação a ser executada para a mesma."}"""
+
+MESSAGE user """Página Moodle: https://ead.hardware.org.br/mod/forum/view.php?id=6775
+Conteúdo: [conteúdo extraído da página durante a execução]
+Determine o tipo de atividade (quiz/assignment/feedback/resource/page/forum/desconhecido) e a ação necessária (responder/ler/enviar/marcar_concluido/navegar)."""
+MESSAGE assistant """{"tipo": "quiz|assignment|feedback|resource|page|forum|desconhecido", "acao": "navegar", "motivo": "explicação curta em português do que a página pede e como concluir"}"""
