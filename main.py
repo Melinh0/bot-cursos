@@ -72,11 +72,26 @@ def run_moodle():
                 logger.info(f"LLM course review: {review}")
                 run_log.event("llm_course_review", cycle=cycle, summary=review)
 
-            handler = MoodleActivityHandler(driver, run_log)
+            handler = MoodleActivityHandler(driver, run_log, course["url"])
             handled = 0
             for activity in pending[:20]:
+                logger.info(f"Processing activity: {activity.get('title', '')}")
+                run_log.event(
+                    "activity_started", title=activity.get("title", ""), url=activity.get("url", "")
+                )
                 if handler.handle(activity["url"]):
                     handled += 1
+                    run_log.event(
+                        "activity_done",
+                        title=activity.get("title", ""),
+                        url=activity.get("url", ""),
+                    )
+                else:
+                    run_log.event(
+                        "activity_failed",
+                        title=activity.get("title", ""),
+                        url=activity.get("url", ""),
+                    )
             logger.info(f"Handled {handled}/{len(pending)} pending activities")
             run_log.event("activities_handled", cycle=cycle, handled=handled, total=len(pending))
 

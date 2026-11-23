@@ -19,10 +19,11 @@ return el ? el.innerText.substring(0, arguments[0]) : '';
 
 
 class MoodleActivityHandler:
-    def __init__(self, driver, run_log=None):
+    def __init__(self, driver, run_log=None, course_url=None):
         self.driver = driver
         self.run_log = run_log
         self.solver = QuizSolver()
+        self.course_url = course_url
 
     def handle(self, url):
         self.driver.get(url)
@@ -30,18 +31,33 @@ class MoodleActivityHandler:
         analysis = self._analyze(url)
         action = (analysis.get("acao") or "").lower()
         if "mod/assign" in url:
-            return self.handle_assign()
-        if "mod/quiz" in url:
-            return self.handle_quiz()
-        if "mod/feedback" in url:
-            return self.handle_feedback()
-        if "mod/resource" in url or "mod/url" in url:
-            return self.handle_resource()
-        if "mod/questionnaire" in url:
-            return self.handle_llm_form(analysis)
-        if action in ("responder", "enviar"):
-            return self.handle_llm_form(analysis)
-        return self.handle_generic()
+            result = self.handle_assign()
+        elif "mod/quiz" in url:
+            result = self.handle_quiz()
+        elif "mod/feedback" in url:
+            result = self.handle_feedback()
+        elif "mod/resource" in url or "mod/url" in url:
+            result = self.handle_resource()
+        elif "mod/questionnaire" in url:
+            result = self.handle_llm_form(analysis)
+        elif action in ("responder", "enviar"):
+            result = self.handle_llm_form(analysis)
+        else:
+            result = self.handle_generic()
+        self._return_to_course()
+        return result
+
+    def _return_to_course(self):
+        if not self.course_url:
+            return
+        try:
+            current = self.driver.current_url
+            if "course/view.php" in current:
+                return
+            self.driver.get(self.course_url)
+            random_delay(2, 3)
+        except Exception:
+            pass
 
     def _analyze(self, url):
         try:
@@ -190,7 +206,12 @@ class MoodleActivityHandler:
             "button[data-action='completion-toggle'], "
             "input[name='submitbutton'], "
             ".completion-button, "
-            "button.btn-mark-done",
+            "button.btn-mark-done, "
+            "a[href*='completion'], "
+            "input[type='submit'][value*='Conclu'], "
+            "button[type='submit'][value*='Conclu'], "
+            ".activity-completion-done, "
+            ".completiontoggle",
         )
         for btn in buttons:
             try:
@@ -199,6 +220,32 @@ class MoodleActivityHandler:
                     random_delay(1, 2)
                     logger.info("Completion marked")
                     return True
+            except Exception:
+                continue
+        return False
+
+    def _click_next_activity(self):
+        next_selectors = [
+            "a[href*='/mod/'][title*='Próximo']",
+            "a[href*='/mod/'][title*='proximo']",
+            "a.btn-next",
+            "a.next-activity",
+            ".nextactivity a",
+            "a[rel='next']",
+            "a:contains('Próxima')",
+            "a:contains('próxima')",
+        ]
+        for selector in next_selectors:
+            try:
+                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                for btn in elements:
+                    if btn.is_displayed() and btn.is_enabled():
+                        href = btn.get_attribute("href") or ""
+                        if "/mod/" in href:
+                            btn.click()
+                            random_delay(2, 3)
+                            logger.info("Next activity clicked")
+                            return True
             except Exception:
                 continue
         return False
@@ -286,6 +333,7 @@ class MoodleActivityHandler:
             )
             random_delay(3, 5)
             self._click_completion()
+            self._click_next_activity()
             logger.info("Generic activity handled")
             return True
         except Exception:
