@@ -52,29 +52,43 @@ def run_moodle():
         logger.info(f"Course found: {course['title']}")
         run_log.event("course_found", title=course["title"], url=course["url"])
 
-        driver.get(course["url"])
-        random_delay(2, 3)
-        activities = navigator.collect_activities()
-        review = quiz_solver.review_progress(course["title"], activities)
-        if review:
-            logger.info(f"LLM course review (before): {review}")
-            run_log.event("llm_course_review", stage="before", summary=review)
+        cycle = 0
+        while True:
+            cycle += 1
+            logger.info(f"Cycle {cycle}")
+            run_log.event("cycle_started", cycle=cycle)
 
-        handler = MoodleActivityHandler(driver, run_log)
-        handled = 0
-        for activity in activities[:20]:
-            if handler.handle(activity["url"]):
-                handled += 1
-        logger.info(f"Handled {handled}/{len(activities)} activities")
-        run_log.event("activities_handled", handled=handled, total=len(activities))
+            driver.get(course["url"])
+            random_delay(2, 3)
+            activities = navigator.collect_activities()
+            pending = [a for a in activities if not a.get("done")]
+            if not pending:
+                logger.info("No pending activities, course complete")
+                run_log.event("course_complete")
+                break
 
-        driver.get(course["url"])
-        random_delay(2, 3)
-        activities_after = navigator.collect_activities()
-        review_after = quiz_solver.review_progress(course["title"], activities_after)
-        if review_after:
-            logger.info(f"LLM course review (after): {review_after}")
-            run_log.event("llm_course_review", stage="after", summary=review_after)
+            review = quiz_solver.review_progress(course["title"], activities)
+            if review:
+                logger.info(f"LLM course review: {review}")
+                run_log.event("llm_course_review", cycle=cycle, summary=review)
+
+            handler = MoodleActivityHandler(driver, run_log)
+            handled = 0
+            for activity in pending[:20]:
+                if handler.handle(activity["url"]):
+                    handled += 1
+            logger.info(f"Handled {handled}/{len(pending)} pending activities")
+            run_log.event("activities_handled", cycle=cycle, handled=handled, total=len(pending))
+
+            driver.get(course["url"])
+            random_delay(2, 3)
+            activities_after = navigator.collect_activities()
+            pending_after = [a for a in activities_after if not a.get("done")]
+            if not pending_after:
+                logger.info("All activities completed")
+                run_log.event("all_activities_completed")
+                break
+            random_delay(30, 60)
     run_log.event("finished", status="completed")
     return 0
 
