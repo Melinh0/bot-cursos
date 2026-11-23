@@ -7,6 +7,29 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+FILL_LOGIN_JS = """
+var user = arguments[0];
+var pass = arguments[1];
+var u = document.getElementById('username');
+var p = document.getElementById('password');
+if (!u || !p) { return false; }
+function setVal(el, v) {
+    el.value = v;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+setVal(u, user);
+setVal(p, pass);
+return true;
+"""
+
+SUBMIT_LOGIN_JS = """
+var btn = document.getElementById('loginbtn');
+if (!btn) { return false; }
+btn.click();
+return true;
+"""
+
 
 class MoodleLogin:
     def __init__(self, driver):
@@ -19,14 +42,15 @@ class MoodleLogin:
         login_url = f"{self.base_url}/login/index.php"
         self.driver.get(login_url)
         WebDriverWait(self.driver, 30).until(EC.presence_of_element_located((By.ID, "username")))
-        user_field = self.driver.find_element(By.ID, "username")
-        pass_field = self.driver.find_element(By.ID, "password")
-        user_field.clear()
-        user_field.send_keys(self.username)
-        pass_field.clear()
-        pass_field.send_keys(self.password)
-        submit = self.driver.find_element(By.ID, "loginbtn")
-        submit.click()
-        WebDriverWait(self.driver, 15).until(lambda d: "/login/" not in d.current_url)
+        WebDriverWait(self.driver, 30).until(EC.presence_of_element_located((By.ID, "password")))
+        filled = self.driver.execute_script(FILL_LOGIN_JS, self.username, self.password)
+        if not filled:
+            logger.error("Could not fill Moodle login fields")
+            return False
+        submitted = self.driver.execute_script(SUBMIT_LOGIN_JS)
+        if not submitted:
+            logger.error("Moodle login button not found")
+            return False
+        WebDriverWait(self.driver, 20).until(lambda d: "/login/" not in d.current_url)
         logger.info("Moodle login successful")
         return True
